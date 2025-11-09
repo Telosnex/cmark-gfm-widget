@@ -202,15 +202,14 @@ Widget _buildCodeBlock(CmarkNode node, BlockRenderContext context) {
           textScaler: TextScaler.linear(context.textScaleFactor),
         );
 
+  // If we wrap in a [SingleChildScrollView], its impossible for clients to
+  // do things like have the codeblock in a container that applys a "fade"
+  // effect at the edges. Therefore, we do not do that here.
   return Container(
-    width: double.infinity,
     padding: context.theme.codeBlockPadding,
     margin: context.theme.blockSpacing,
     color: context.theme.codeBlockBackgroundColor,
-    child: SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: child,
-    ),
+    child: child,
   );
 }
 

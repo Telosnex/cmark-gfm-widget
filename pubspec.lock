@@ -36,9 +36,11 @@ packages:
   cmark_gfm:
     dependency: "direct main"
     description:
-      path: "../cmark-gfm-dart"
-      relative: true
-    source: path
+      path: "."
+      ref: HEAD
+      resolved-ref: "393524fd0a40e349377b999d9dbb074cb1a41acb"
+      url: "https://github.com/Telosnex/cmark-gfm-dart.git"
+    source: git
     version: "0.1.0-dev"
   collection:
     dependency: transitive

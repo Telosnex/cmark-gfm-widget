@@ -175,13 +175,19 @@ Widget _buildCodeBlock(CmarkNode node, BlockRenderContext context) {
     highlightConfig,
   );
 
+  // `node.codeData.literal` does not contain the Markdown code block fences.
+  // Therefore, Highlight cannot auto-detect the language.
+  // Therefore, we use the language from `node.codeData.info` here, and only
+  // ask highlight to auto-detect if we cannot determine a language.
   final textSpan = _highlightAdapter.build(
     code: literal,
     baseStyle: context.theme.codeBlockTextStyle,
     theme: highlightConfig.theme,
-    autoDetectLanguage: highlightConfig.autoDetectLanguage,
+    autoDetectLanguage: language == null ||
+        language.isEmpty ||
+        language == highlightConfig.defaultLanguage,
     language: language,
-    fallbackStyle: highlightConfig.fallbackStyle,
+    fallbackStyle: context.theme.codeBlockTextStyle,
     tabSize: highlightConfig.tabSize,
   );
 

@@ -291,15 +291,12 @@ Widget _buildListItem(
     child: Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        SizedBox(
-          width: context.theme.listBulletWidth,
-          child: Text(
-            bulletText,
-            style: ordered
-                ? context.theme.orderedListBulletTextStyle
-                : context.theme.unorderedListBulletTextStyle,
-            textAlign: TextAlign.right,
-          ),
+        Text(
+          bulletText,
+          style: ordered
+              ? context.theme.orderedListBulletTextStyle
+              : context.theme.unorderedListBulletTextStyle,
+          textAlign: TextAlign.right,
         ),
         SizedBox(width: context.theme.listBulletGap),
         Expanded(child: column),

@@ -65,7 +65,6 @@ class CmarkThemeData {
     required this.codeBlockBackgroundColor,
     required this.codeBlockPadding,
     required this.codeBlockTextStyle,
-    required this.listBulletWidth,
     required this.listBulletGap,
     required this.orderedListIndent,
     required this.unorderedListIndent,
@@ -96,7 +95,6 @@ class CmarkThemeData {
   final Color codeBlockBackgroundColor;
   final EdgeInsets codeBlockPadding;
   final TextStyle codeBlockTextStyle;
-  final double listBulletWidth;
   final double listBulletGap;
 
   /// Returns the indentation for an ordered list at the given nesting [level].
@@ -140,7 +138,6 @@ class CmarkThemeData {
     Color? codeBlockBackgroundColor,
     EdgeInsets? codeBlockPadding,
     TextStyle? codeBlockTextStyle,
-    double? listBulletWidth,
     double? listBulletGap,
     double Function(int level)? orderedListIndent,
     double Function(int level)? unorderedListIndent,
@@ -177,7 +174,6 @@ class CmarkThemeData {
           codeBlockBackgroundColor ?? this.codeBlockBackgroundColor,
       codeBlockPadding: codeBlockPadding ?? this.codeBlockPadding,
       codeBlockTextStyle: codeBlockTextStyle ?? this.codeBlockTextStyle,
-      listBulletWidth: listBulletWidth ?? this.listBulletWidth,
       listBulletGap: listBulletGap ?? this.listBulletGap,
       orderedListIndent: orderedListIndent ?? this.orderedListIndent,
       unorderedListIndent: unorderedListIndent ?? this.unorderedListIndent,
@@ -244,7 +240,6 @@ class CmarkThemeData {
         color: Colors.white,
         fontSize: 14,
       ),
-      listBulletWidth: 24,
       listBulletGap: 8,
       orderedListIndent: (_) => 16,
       unorderedListIndent: (_) => 16,

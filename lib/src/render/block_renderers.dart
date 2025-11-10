@@ -318,9 +318,11 @@ Widget _buildListItem(
 }
 
 Widget _buildTable(CmarkNode node, BlockRenderContext context) {
-  final rows = <TableRow>[];
+  final cellRows = <List<Widget>>[];
+  final columnAlignments = <CmarkTableAlign>[];
   var rowNode = node.firstChild;
   var isHeaderProcessed = false;
+  var maxColumns = 0;
   while (rowNode != null) {
     if (rowNode.type != CmarkNodeType.tableRow) {
       rowNode = rowNode.next;
@@ -328,50 +330,89 @@ Widget _buildTable(CmarkNode node, BlockRenderContext context) {
     }
     final cells = <Widget>[];
     var cellNode = rowNode.firstChild;
+    var columnIndex = 0;
     while (cellNode != null) {
       if (cellNode.type != CmarkNodeType.tableCell) {
         cellNode = cellNode.next;
         continue;
       }
+      if (columnAlignments.length <= columnIndex) {
+        columnAlignments.add(cellNode.tableCellData.align);
+      } else {
+        final existing = columnAlignments[columnIndex];
+        if (existing == CmarkTableAlign.none &&
+            cellNode.tableCellData.align != CmarkTableAlign.none) {
+          columnAlignments[columnIndex] = cellNode.tableCellData.align;
+        }
+      }
+
+      final baseStyle = rowNode.tableRowData.isHeader
+          ? context.theme.tableHeaderTextStyle
+          : context.theme.tableBodyTextStyle;
       final cellChildren = renderInlineChildren(
         cellNode,
         context.inlineContext,
-        rowNode.tableRowData.isHeader
-            ? context.theme.tableHeaderTextStyle
-            : context.theme.tableBodyTextStyle,
+        baseStyle,
       );
       final textSpan = TextSpan(
-        style: rowNode.tableRowData.isHeader
-            ? context.theme.tableHeaderTextStyle
-            : context.theme.tableBodyTextStyle,
+        style: baseStyle,
         children: cellChildren.isEmpty ? null : cellChildren,
         text: cellChildren.isEmpty ? '' : null,
       );
+
+      final textAlign = _textAlignForCell(columnAlignments[columnIndex]);
+      final alignedChild = context.selectable
+          ? SelectableText.rich(
+              textSpan,
+              textAlign: textAlign,
+              textScaler: TextScaler.linear(context.textScaleFactor),
+            )
+          : RichText(
+              text: textSpan,
+              textAlign: textAlign,
+              textScaler: TextScaler.linear(context.textScaleFactor),
+            );
+
       cells.add(
-        Padding(
-          padding: context.theme.tableCellPadding,
-          child: context.selectable
-              ? SelectableText.rich(
-                  textSpan,
-                  textScaler: TextScaler.linear(context.textScaleFactor),
-                )
-              : RichText(
-                  text: textSpan,
-                  textScaler: TextScaler.linear(context.textScaleFactor),
-                ),
+        Align(
+          alignment: _alignmentForCell(columnAlignments[columnIndex]),
+          child: Padding(
+            padding: context.theme.tableCellPadding,
+            child: alignedChild,
+          ),
         ),
       );
+      columnIndex += 1;
       cellNode = cellNode.next;
     }
-    rows.add(TableRow(children: cells));
+    maxColumns = cells.length > maxColumns ? cells.length : maxColumns;
+    cellRows.add(cells);
     if (rowNode.tableRowData.isHeader) {
       isHeaderProcessed = true;
     }
     rowNode = rowNode.next;
   }
 
+  if (cellRows.isEmpty) {
+    return const SizedBox.shrink();
+  }
+
+  for (final cells in cellRows) {
+    if (cells.length < maxColumns) {
+      cells.addAll(
+        List<Widget>.generate(
+          maxColumns - cells.length,
+          (_) => const SizedBox.shrink(),
+        ),
+      );
+    }
+  }
+
+  final rows = cellRows.map((cells) => TableRow(children: cells)).toList();
+
   final table = Table(
     defaultVerticalAlignment: TableCellVerticalAlignment.top,
+    defaultColumnWidth: const IntrinsicColumnWidth(),
     border: context.theme.tableBorder,
     children: rows,
   );
@@ -420,6 +461,30 @@ Widget _buildFootnoteDefinition(
     ),
     context.theme.blockSpacing,
   );
+}
+
+Alignment _alignmentForCell(CmarkTableAlign align) {
+  switch (align) {
+    case CmarkTableAlign.center:
+      return Alignment.center;
+    case CmarkTableAlign.right:
+      return Alignment.centerRight;
+    case CmarkTableAlign.left:
+    case CmarkTableAlign.none:
+      return Alignment.centerLeft;
+  }
+}
+
+TextAlign _textAlignForCell(CmarkTableAlign align) {
+  switch (align) {
+    case CmarkTableAlign.center:
+      return TextAlign.center;
+    case CmarkTableAlign.right:
+      return TextAlign.right;
+    case CmarkTableAlign.left:
+    case CmarkTableAlign.none:
+      return TextAlign.left;
+  }
 }
 
 Widget _wrapWithSpacing(Widget child, EdgeInsets padding) {

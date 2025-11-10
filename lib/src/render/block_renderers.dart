@@ -64,11 +64,21 @@ Widget? _renderBlock(
     case CmarkNodeType.codeBlock:
       return _buildCodeBlock(node, context);
     case CmarkNodeType.thematicBreak:
-      return Divider(
+      final verticalPadding =
+          (theme.thematicBreakVerticalPadding / 2).clamp(0.0, double.infinity);
+      final divider = Divider(
         color: theme.thematicBreakColor,
         thickness: theme.thematicBreakThickness,
-        height: theme.thematicBreakThickness + theme.blockSpacing.bottom,
+        height: theme.thematicBreakThickness,
       );
+      final paddedDivider = Padding(
+        padding: EdgeInsets.only(
+          top: verticalPadding,
+          bottom: verticalPadding,
+        ),
+        child: divider,
+      );
+      return _wrapWithSpacing(paddedDivider, theme.blockSpacing);
     case CmarkNodeType.list:
       return _buildList(node, context, level: listLevel + 1);
     case CmarkNodeType.table:

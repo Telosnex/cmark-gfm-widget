@@ -58,6 +58,7 @@ class CmarkThemeData {
     required this.strikethroughTextStyle,
     required this.thematicBreakColor,
     required this.thematicBreakThickness,
+    required this.thematicBreakVerticalPadding,
     required this.blockSpacing,
     required this.blockQuoteBackgroundColor,
     required this.blockQuoteBorderColor,
@@ -88,6 +89,7 @@ class CmarkThemeData {
   final TextStyle strikethroughTextStyle;
   final Color thematicBreakColor;
   final double thematicBreakThickness;
+  final double thematicBreakVerticalPadding;
   final EdgeInsets blockSpacing;
   final Color blockQuoteBackgroundColor;
   final Color blockQuoteBorderColor;
@@ -131,6 +133,7 @@ class CmarkThemeData {
     TextStyle? strikethroughTextStyle,
     Color? thematicBreakColor,
     double? thematicBreakThickness,
+    double? thematicBreakVerticalPadding,
     EdgeInsets? blockSpacing,
     Color? blockQuoteBackgroundColor,
     Color? blockQuoteBorderColor,
@@ -164,6 +167,8 @@ class CmarkThemeData {
       thematicBreakColor: thematicBreakColor ?? this.thematicBreakColor,
       thematicBreakThickness:
           thematicBreakThickness ?? this.thematicBreakThickness,
+      thematicBreakVerticalPadding:
+          thematicBreakVerticalPadding ?? this.thematicBreakVerticalPadding,
       blockSpacing: blockSpacing ?? this.blockSpacing,
       blockQuoteBackgroundColor:
           blockQuoteBackgroundColor ?? this.blockQuoteBackgroundColor,
@@ -226,6 +231,7 @@ class CmarkThemeData {
       ),
       thematicBreakColor: Colors.grey.shade400,
       thematicBreakThickness: 1.0,
+      thematicBreakVerticalPadding: 8.0,
       blockSpacing: const EdgeInsets.only(bottom: 0),
       blockQuoteBackgroundColor: Colors.grey.shade100,
       blockQuoteBorderColor: Colors.grey.shade400,

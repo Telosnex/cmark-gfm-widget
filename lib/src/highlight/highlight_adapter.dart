@@ -1,6 +1,6 @@
 import 'dart:collection';
 
-import 'package:flutter/material.dart';
+import 'package:pixel_snap/material.dart';
 import 'package:highlight/highlight.dart' as hi;
 
 class HighlightAdapter {

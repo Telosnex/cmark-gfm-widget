@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:pixel_snap/material.dart';
 
 import '../parser/document_snapshot.dart';
 import '../parser/parser_controller.dart';

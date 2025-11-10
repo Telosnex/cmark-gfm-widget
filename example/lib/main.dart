@@ -1,5 +1,5 @@
 import 'package:cmark_gfm_widget/cmark_gfm_widget.dart';
-import 'package:flutter/material.dart';
+import 'package:pixel_snap/material.dart';
 
 void main() {
   runApp(const DemoApp());

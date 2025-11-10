@@ -1,5 +1,5 @@
 import 'package:cmark_gfm/cmark_gfm.dart';
-import 'package:flutter/material.dart';
+import 'package:pixel_snap/material.dart';
 
 import '../parser/document_snapshot.dart';
 import '../theme/cmark_theme.dart';

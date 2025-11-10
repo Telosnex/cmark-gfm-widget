@@ -21,12 +21,14 @@ class BlockRenderContext {
     required this.inlineContext,
     required this.selectable,
     required this.textScaleFactor,
+    required this.renderFootnoteDefinitions,
   });
 
   final CmarkThemeData theme;
   final InlineRenderContext inlineContext;
   final bool selectable;
   final double textScaleFactor;
+  final bool renderFootnoteDefinitions;
 }
 
 List<BlockRenderResult> renderDocumentBlocks(
@@ -398,6 +400,10 @@ Widget _buildFootnoteDefinition(
     }
     child = child.next;
   }
+  if (!context.renderFootnoteDefinitions) {
+    return const SizedBox.shrink();
+  }
+
   return _wrapWithSpacing(
     Row(
       crossAxisAlignment: CrossAxisAlignment.start,

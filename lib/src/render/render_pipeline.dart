@@ -10,11 +10,13 @@ class RenderOptions {
     this.selectable = false,
     this.textScaleFactor = 1.0,
     this.footnoteReferenceBuilder,
+    this.renderFootnoteDefinitions = true,
   });
 
   final bool selectable;
   final double textScaleFactor;
   final FootnoteReferenceSpanBuilder? footnoteReferenceBuilder;
+  final bool renderFootnoteDefinitions;
 }
 
 class RenderPipeline {
@@ -35,6 +37,7 @@ class RenderPipeline {
       inlineContext: inlineContext,
       selectable: options.selectable,
       textScaleFactor: options.textScaleFactor,
+      renderFootnoteDefinitions: options.renderFootnoteDefinitions,
     );
 
     return renderDocumentBlocks(snapshot, blockContext);

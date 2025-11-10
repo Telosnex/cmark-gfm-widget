@@ -63,7 +63,12 @@ class HighlightAdapter {
     }
 
     if (trailing.isNotEmpty) {
-      spans.add(TextSpan(text: trailing, style: effectiveBase));
+      final hasNonNewline = trailing.runes.any((code) {
+        return code != 0x0A && code != 0x0D;
+      });
+      if (hasNonNewline) {
+        spans.add(TextSpan(text: trailing, style: effectiveBase));
+      }
     }
 
     final merged = _mergeAdjacentTextSpans(spans);

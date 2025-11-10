@@ -98,8 +98,16 @@ class CmarkThemeData {
   final TextStyle codeBlockTextStyle;
   final double listBulletWidth;
   final double listBulletGap;
-  final double orderedListIndent;
-  final double unorderedListIndent;
+
+  /// Returns the indentation for an ordered list at the given nesting [level].
+  ///
+  /// The provided [level] is 1-based, where the outermost list has level 1.
+  final double Function(int level) orderedListIndent;
+
+  /// Returns the indentation for an unordered list at the given nesting [level].
+  ///
+  /// The provided [level] is 1-based, where the outermost list has level 1.
+  final double Function(int level) unorderedListIndent;
   final double listItemSpacing;
   final TextStyle orderedListBulletTextStyle;
   final TextStyle unorderedListBulletTextStyle;
@@ -134,8 +142,8 @@ class CmarkThemeData {
     TextStyle? codeBlockTextStyle,
     double? listBulletWidth,
     double? listBulletGap,
-    double? orderedListIndent,
-    double? unorderedListIndent,
+    double Function(int level)? orderedListIndent,
+    double Function(int level)? unorderedListIndent,
     double? listItemSpacing,
     TextStyle? orderedListBulletTextStyle,
     TextStyle? unorderedListBulletTextStyle,
@@ -238,8 +246,8 @@ class CmarkThemeData {
       ),
       listBulletWidth: 24,
       listBulletGap: 8,
-      orderedListIndent: 16,
-      unorderedListIndent: 16,
+      orderedListIndent: (_) => 16,
+      unorderedListIndent: (_) => 16,
       listItemSpacing: 8,
       orderedListBulletTextStyle: textTheme.bodyMedium ?? const TextStyle(),
       unorderedListBulletTextStyle: textTheme.bodyMedium ?? const TextStyle(),

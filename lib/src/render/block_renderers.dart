@@ -44,7 +44,11 @@ List<BlockRenderResult> renderDocumentBlocks(
   return results;
 }
 
-Widget? _renderBlock(CmarkNode node, BlockRenderContext context) {
+Widget? _renderBlock(
+  CmarkNode node,
+  BlockRenderContext context, {
+  int listLevel = 0,
+}) {
   final theme = context.theme;
   switch (node.type) {
     case CmarkNodeType.paragraph:
@@ -56,7 +60,7 @@ Widget? _renderBlock(CmarkNode node, BlockRenderContext context) {
         style: theme.headingTextStyle(node.headingData.level),
       );
     case CmarkNodeType.blockQuote:
-      return _buildBlockQuote(node, context);
+      return _buildBlockQuote(node, context, listLevel: listLevel);
     case CmarkNodeType.codeBlock:
       return _buildCodeBlock(node, context);
     case CmarkNodeType.thematicBreak:
@@ -66,7 +70,7 @@ Widget? _renderBlock(CmarkNode node, BlockRenderContext context) {
         height: theme.thematicBreakThickness + theme.blockSpacing.bottom,
       );
     case CmarkNodeType.list:
-      return _buildList(node, context);
+      return _buildList(node, context, level: listLevel + 1);
     case CmarkNodeType.table:
       return _buildTable(node, context);
     case CmarkNodeType.htmlBlock:
@@ -77,7 +81,7 @@ Widget? _renderBlock(CmarkNode node, BlockRenderContext context) {
         literal: node.content.toString(),
       );
     case CmarkNodeType.footnoteDefinition:
-      return _buildFootnoteDefinition(node, context);
+      return _buildFootnoteDefinition(node, context, listLevel: listLevel);
     case CmarkNodeType.customBlock:
       return _buildTextualBlock(
         node,
@@ -86,15 +90,19 @@ Widget? _renderBlock(CmarkNode node, BlockRenderContext context) {
         literal: node.customData.onEnter,
       );
     default:
-      return _renderCompositeBlock(node, context);
+      return _renderCompositeBlock(node, context, listLevel: listLevel);
   }
 }
 
-Widget? _renderCompositeBlock(CmarkNode node, BlockRenderContext context) {
+Widget? _renderCompositeBlock(
+  CmarkNode node,
+  BlockRenderContext context, {
+  required int listLevel,
+}) {
   final children = <Widget>[];
   var child = node.firstChild;
   while (child != null) {
-    final rendered = _renderBlock(child, context);
+    final rendered = _renderBlock(child, context, listLevel: listLevel);
     if (rendered != null) {
       children.add(rendered);
     }
@@ -140,11 +148,15 @@ Widget _buildTextualBlock(
   return _wrapWithSpacing(widget, context.theme.blockSpacing);
 }
 
-Widget _buildBlockQuote(CmarkNode node, BlockRenderContext context) {
+Widget _buildBlockQuote(
+  CmarkNode node,
+  BlockRenderContext context, {
+  required int listLevel,
+}) {
   final children = <Widget>[];
   var child = node.firstChild;
   while (child != null) {
-    final rendered = _renderBlock(child, context);
+    final rendered = _renderBlock(child, context, listLevel: listLevel);
     if (rendered != null) {
       children.add(rendered);
     }
@@ -213,7 +225,11 @@ Widget _buildCodeBlock(CmarkNode node, BlockRenderContext context) {
   );
 }
 
-Widget _buildList(CmarkNode node, BlockRenderContext context) {
+Widget _buildList(
+  CmarkNode node,
+  BlockRenderContext context, {
+  required int level,
+}) {
   final data = node.listData;
   final ordered = data.listType == CmarkListType.ordered;
   final start = ordered ? (data.start == 0 ? 1 : data.start) : 1;
@@ -229,6 +245,7 @@ Widget _buildList(CmarkNode node, BlockRenderContext context) {
         ordered: ordered,
         index: ordered ? start + index - 1 : index,
         tight: data.tight,
+        level: level,
       ),
     );
     item = item.next;
@@ -245,12 +262,13 @@ Widget _buildListItem(
   required bool ordered,
   required int index,
   required bool tight,
+  required int level,
 }) {
   final bulletText = ordered ? '$index.' : '\u2022';
   final children = <Widget>[];
   var child = item.firstChild;
   while (child != null) {
-    final rendered = _renderBlock(child, context);
+    final rendered = _renderBlock(child, context, listLevel: level);
     if (rendered != null) {
       children.add(rendered);
     }
@@ -261,11 +279,13 @@ Widget _buildListItem(
     children: children,
   );
 
+  final resolvedLevel = level < 1 ? 1 : level;
+
   return Padding(
     padding: EdgeInsets.only(
       left: ordered
-          ? context.theme.orderedListIndent
-          : context.theme.unorderedListIndent,
+          ? context.theme.orderedListIndent(resolvedLevel)
+          : context.theme.unorderedListIndent(resolvedLevel),
       bottom: tight ? 0 : context.theme.listItemSpacing,
     ),
     child: Row(
@@ -356,12 +376,16 @@ Widget _buildTable(CmarkNode node, BlockRenderContext context) {
   );
 }
 
-Widget _buildFootnoteDefinition(CmarkNode node, BlockRenderContext context) {
+Widget _buildFootnoteDefinition(
+  CmarkNode node,
+  BlockRenderContext context, {
+  required int listLevel,
+}) {
   final label = node.footnoteReferenceIndex;
   final children = <Widget>[];
   var child = node.firstChild;
   while (child != null) {
-    final rendered = _renderBlock(child, context);
+    final rendered = _renderBlock(child, context, listLevel: listLevel);
     if (rendered != null) {
       children.add(rendered);
     }

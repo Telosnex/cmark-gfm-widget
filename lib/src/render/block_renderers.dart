@@ -5,6 +5,7 @@ import '../parser/document_snapshot.dart';
 import '../theme/cmark_theme.dart';
 import '../highlight/highlight_adapter.dart';
 import 'inline_renderers.dart';
+import 'table_options.dart';
 
 final HighlightAdapter _highlightAdapter = HighlightAdapter();
 
@@ -22,6 +23,7 @@ class BlockRenderContext {
     required this.selectable,
     required this.textScaleFactor,
     required this.renderFootnoteDefinitions,
+    required this.tableOptions,
   });
 
   final CmarkThemeData theme;
@@ -29,6 +31,7 @@ class BlockRenderContext {
   final bool selectable;
   final double textScaleFactor;
   final bool renderFootnoteDefinitions;
+  final TableRenderOptions tableOptions;
 }
 
 List<BlockRenderResult> renderDocumentBlocks(
@@ -320,6 +323,9 @@ Widget _buildListItem(
 Widget _buildTable(CmarkNode node, BlockRenderContext context) {
   final cellRows = <List<Widget>>[];
   final columnAlignments = <CmarkTableAlign>[];
+  final dataRows = <List<String>>[];
+  List<String>? headerRow;
+
   var rowNode = node.firstChild;
   var isHeaderProcessed = false;
   var maxColumns = 0;
@@ -329,6 +335,7 @@ Widget _buildTable(CmarkNode node, BlockRenderContext context) {
       continue;
     }
     final cells = <Widget>[];
+    final cellTexts = <String>[];
     var cellNode = rowNode.firstChild;
     var columnIndex = 0;
     while (cellNode != null) {
@@ -382,6 +389,7 @@ Widget _buildTable(CmarkNode node, BlockRenderContext context) {
           ),
         ),
       );
+      cellTexts.add(_collectPlainText(cellNode));
       columnIndex += 1;
       cellNode = cellNode.next;
     }
@@ -389,6 +397,9 @@ Widget _buildTable(CmarkNode node, BlockRenderContext context) {
     cellRows.add(cells);
     if (rowNode.tableRowData.isHeader) {
       isHeaderProcessed = true;
+      headerRow = cellTexts;
+    } else {
+      dataRows.add(cellTexts);
     }
     rowNode = rowNode.next;
   }
@@ -410,20 +421,39 @@ Widget _buildTable(CmarkNode node, BlockRenderContext context) {
 
   final rows = cellRows.map((cells) => TableRow(children: cells)).toList();
 
+  final defaultColumnWidth =
+      context.tableOptions.defaultColumnWidth ?? const IntrinsicColumnWidth();
+
   final table = Table(
     defaultVerticalAlignment: TableCellVerticalAlignment.top,
-    defaultColumnWidth: const IntrinsicColumnWidth(),
+    defaultColumnWidth: defaultColumnWidth,
+    columnWidths: context.tableOptions.columnWidths,
     border: context.theme.tableBorder,
     children: rows,
   );
 
-  return _wrapWithSpacing(
-    Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [if (isHeaderProcessed) const SizedBox(height: 4), table],
-    ),
-    context.theme.blockSpacing,
+  Widget result = Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [if (isHeaderProcessed) const SizedBox(height: 4), table],
   );
+
+  final wrapper = context.tableOptions.wrapper;
+  if (wrapper != null) {
+    final metadata = TableRenderMetadata(
+      node: node,
+      alignments: columnAlignments,
+      header: headerRow,
+      rows: dataRows,
+    );
+    final wrapperContext = TableWrapperContext(
+      theme: context.theme,
+      selectable: context.selectable,
+      textScaleFactor: context.textScaleFactor,
+    );
+    result = wrapper(result, metadata, wrapperContext);
+  }
+
+  return _wrapWithSpacing(result, context.theme.blockSpacing);
 }
 
 Widget _buildFootnoteDefinition(
@@ -492,6 +522,29 @@ Widget _wrapWithSpacing(Widget child, EdgeInsets padding) {
     return child;
   }
   return Padding(padding: padding, child: child);
+}
+
+String _collectPlainText(CmarkNode node) {
+  final buffer = StringBuffer();
+
+  void visit(CmarkNode current) {
+    if (current.type == CmarkNodeType.text ||
+        current.type == CmarkNodeType.code) {
+      buffer.write(current.content.toString());
+    } else if (current.type == CmarkNodeType.softbreak ||
+        current.type == CmarkNodeType.linebreak) {
+      buffer.write('\n');
+    }
+
+    var child = current.firstChild;
+    while (child != null) {
+      visit(child);
+      child = child.next;
+    }
+  }
+
+  visit(node);
+  return buffer.toString();
 }
 
 String? _resolveCodeBlockLanguage(String info, CodeHighlightTheme config) {

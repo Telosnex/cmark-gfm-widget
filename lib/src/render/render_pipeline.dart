@@ -4,6 +4,9 @@ import '../parser/document_snapshot.dart';
 import '../theme/cmark_theme.dart';
 import 'block_renderers.dart';
 import 'inline_renderers.dart';
+import 'table_options.dart';
+
+export 'table_options.dart';
 
 class RenderOptions {
   const RenderOptions({
@@ -11,12 +14,14 @@ class RenderOptions {
     this.textScaleFactor = 1.0,
     this.footnoteReferenceBuilder,
     this.renderFootnoteDefinitions = true,
+    this.tableOptions = const TableRenderOptions(),
   });
 
   final bool selectable;
   final double textScaleFactor;
   final FootnoteReferenceSpanBuilder? footnoteReferenceBuilder;
   final bool renderFootnoteDefinitions;
+  final TableRenderOptions tableOptions;
 }
 
 class RenderPipeline {
@@ -38,6 +43,7 @@ class RenderPipeline {
       selectable: options.selectable,
       textScaleFactor: options.textScaleFactor,
       renderFootnoteDefinitions: options.renderFootnoteDefinitions,
+      tableOptions: options.tableOptions,
     );
 
     return renderDocumentBlocks(snapshot, blockContext);

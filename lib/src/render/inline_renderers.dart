@@ -4,12 +4,24 @@ import 'package:flutter/material.dart';
 import '../theme/cmark_theme.dart';
 
 /// Context object passed to inline renderers.
+typedef FootnoteReferenceSpanBuilder = InlineSpan? Function(
+  CmarkNode node,
+  InlineRenderContext context,
+  TextStyle baseStyle,
+);
+
 class InlineRenderContext {
-  InlineRenderContext({required this.theme, required this.textScaleFactor});
+  InlineRenderContext({
+    required this.theme,
+    required this.textScaleFactor,
+    this.footnoteReferenceBuilder,
+  });
 
   final CmarkThemeData theme;
   final double textScaleFactor;
+  final FootnoteReferenceSpanBuilder? footnoteReferenceBuilder;
 }
+
 
 /// Renders all inline children of [parent] using [baseStyle].
 List<InlineSpan> renderInlineChildren(
@@ -87,6 +99,11 @@ InlineSpan _renderInlineNode(
         ),
       );
     case CmarkNodeType.footnoteReference:
+      final custom =
+          context.footnoteReferenceBuilder?.call(node, context, baseStyle);
+      if (custom != null) {
+        return custom;
+      }
       final label = node.footnoteReferenceIndex;
       return TextSpan(
         text: '[${label == 0 ? node.content.toString() : label}]',

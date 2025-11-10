@@ -6,10 +6,15 @@ import 'block_renderers.dart';
 import 'inline_renderers.dart';
 
 class RenderOptions {
-  const RenderOptions({this.selectable = false, this.textScaleFactor = 1.0});
+  const RenderOptions({
+    this.selectable = false,
+    this.textScaleFactor = 1.0,
+    this.footnoteReferenceBuilder,
+  });
 
   final bool selectable;
   final double textScaleFactor;
+  final FootnoteReferenceSpanBuilder? footnoteReferenceBuilder;
 }
 
 class RenderPipeline {
@@ -23,6 +28,7 @@ class RenderPipeline {
     final inlineContext = InlineRenderContext(
       theme: theme,
       textScaleFactor: options.textScaleFactor,
+      footnoteReferenceBuilder: options.footnoteReferenceBuilder,
     );
     final blockContext = BlockRenderContext(
       theme: theme,

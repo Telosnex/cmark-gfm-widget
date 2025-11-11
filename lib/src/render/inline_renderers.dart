@@ -1,4 +1,5 @@
 import 'package:cmark_gfm/cmark_gfm.dart';
+import 'package:flutter_math_fork/flutter_math.dart';
 import 'package:pixel_snap/material.dart';
 
 import '../theme/cmark_theme.dart';
@@ -10,16 +11,24 @@ typedef FootnoteReferenceSpanBuilder = InlineSpan? Function(
   TextStyle baseStyle,
 );
 
+typedef InlineMathSpanBuilder = InlineSpan Function(
+  CmarkNode node,
+  InlineRenderContext context,
+  TextStyle baseStyle,
+);
+
 class InlineRenderContext {
   InlineRenderContext({
     required this.theme,
     required this.textScaleFactor,
     this.footnoteReferenceBuilder,
+    this.mathInlineBuilder,
   });
 
   final CmarkThemeData theme;
   final double textScaleFactor;
   final FootnoteReferenceSpanBuilder? footnoteReferenceBuilder;
+  final InlineMathSpanBuilder? mathInlineBuilder;
 }
 
 
@@ -109,6 +118,10 @@ InlineSpan _renderInlineNode(
         text: '[${label == 0 ? node.content.toString() : label}]',
         style: baseStyle,
       );
+    case CmarkNodeType.math:
+      final builder =
+          context.mathInlineBuilder ?? _defaultInlineMathSpanBuilder;
+      return builder(node, context, baseStyle);
     default:
       return TextSpan(
         style: baseStyle,
@@ -175,4 +188,43 @@ List<InlineSpan> _mergeAdjacentTextSpans(List<InlineSpan> spans) {
 
   flush();
   return merged;
+}
+
+InlineSpan _defaultInlineMathSpanBuilder(
+  CmarkNode node,
+  InlineRenderContext context,
+  TextStyle baseStyle,
+) {
+  final literal = node.mathData.literal;
+  if (literal.isEmpty) {
+    return TextSpan(text: literal, style: baseStyle);
+  }
+
+  final display = node.mathData.display;
+  final math = Math.tex(
+    literal,
+    mathStyle: display ? MathStyle.display : MathStyle.text,
+    textStyle: baseStyle,
+    onErrorFallback: (error) => Text(literal, style: baseStyle),
+  );
+
+  Widget child = math;
+  if (display) {
+    child = Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: math,
+    );
+  }
+
+  child = SingleChildScrollView(
+    scrollDirection: Axis.horizontal,
+    child: child,
+  );
+
+  return WidgetSpan(
+    alignment:
+        display ? PlaceholderAlignment.middle : PlaceholderAlignment.baseline,
+    baseline: display ? null : TextBaseline.alphabetic,
+    child: child,
+  );
 }

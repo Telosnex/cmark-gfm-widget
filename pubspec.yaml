@@ -17,6 +17,11 @@ dependencies:
   highlight: ^0.7.0
   flutter_highlight: ^0.7.0
   pixel_snap: ^0.1.5
+    # Forked because the original package was abandoned some years ago.
+  flutter_math_fork:
+    git:
+      url: https://github.com/Telosnex/flutter_math_fork_fork.git
+      ref: master
 
 dev_dependencies:
   flutter_test:

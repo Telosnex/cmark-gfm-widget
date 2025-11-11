@@ -17,6 +17,7 @@ class RenderOptions {
     this.renderFootnoteDefinitions = true,
     this.tableOptions = const TableRenderOptions(),
     this.codeBlockWrapper,
+    this.mathOptions = const MathRenderOptions(),
   });
 
   final bool selectable;
@@ -25,6 +26,17 @@ class RenderOptions {
   final bool renderFootnoteDefinitions;
   final TableRenderOptions tableOptions;
   final CodeBlockWrapperBuilder? codeBlockWrapper;
+  final MathRenderOptions mathOptions;
+}
+
+class MathRenderOptions {
+  const MathRenderOptions({
+    this.inlineBuilder,
+    this.blockBuilder,
+  });
+
+  final InlineMathSpanBuilder? inlineBuilder;
+  final BlockMathWidgetBuilder? blockBuilder;
 }
 
 /// Signature for wrapping code blocks with additional UI (e.g., copy button).
@@ -58,6 +70,7 @@ class RenderPipeline {
       theme: theme,
       textScaleFactor: options.textScaleFactor,
       footnoteReferenceBuilder: options.footnoteReferenceBuilder,
+      mathInlineBuilder: options.mathOptions.inlineBuilder,
     );
     final blockContext = BlockRenderContext(
       theme: theme,
@@ -67,6 +80,7 @@ class RenderPipeline {
       renderFootnoteDefinitions: options.renderFootnoteDefinitions,
       tableOptions: options.tableOptions,
       codeBlockWrapper: options.codeBlockWrapper,
+      mathBlockBuilder: options.mathOptions.blockBuilder,
     );
 
     return renderDocumentBlocks(snapshot, blockContext);

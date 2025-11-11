@@ -1,3 +1,4 @@
+import 'package:cmark_gfm/cmark_gfm.dart';
 import 'package:pixel_snap/material.dart';
 
 import '../parser/document_snapshot.dart';
@@ -16,6 +17,7 @@ class CmarkMarkdownColumn extends StatefulWidget {
     this.padding = EdgeInsets.zero,
     this.selectable = false,
     this.textScaleFactor,
+    this.parserOptions = const CmarkParserOptions(enableMath: true),
   }) : assert(
          (data != null) ^ (snapshot != null),
          'Provide either data or snapshot.',
@@ -42,6 +44,9 @@ class CmarkMarkdownColumn extends StatefulWidget {
   /// Overrides the effective text scale factor.
   final double? textScaleFactor;
 
+  /// Parser configuration used when creating an internal [ParserController].
+  final CmarkParserOptions parserOptions;
+
   @override
   State<CmarkMarkdownColumn> createState() => _CmarkMarkdownColumnState();
 }
@@ -57,7 +62,8 @@ class _CmarkMarkdownColumnState extends State<CmarkMarkdownColumn> {
   void initState() {
     super.initState();
     _ownsController = widget.controller == null;
-    _controller = widget.controller ?? ParserController();
+    _controller = widget.controller ??
+        ParserController(parserOptions: widget.parserOptions);
     _recomputeSnapshot(force: true);
   }
 
@@ -74,10 +80,16 @@ class _CmarkMarkdownColumnState extends State<CmarkMarkdownColumn> {
         _ownsController = false;
         controllerChanged = true;
       } else if (oldWidget.controller != null) {
-        _controller = ParserController();
+        _controller = ParserController(parserOptions: widget.parserOptions);
         _ownsController = true;
         controllerChanged = true;
       }
+    }
+
+    if (_ownsController &&
+        widget.parserOptions != oldWidget.parserOptions) {
+      _controller = ParserController(parserOptions: widget.parserOptions);
+      controllerChanged = true;
     }
 
     final dataChanged = widget.data != oldWidget.data;
@@ -164,6 +176,7 @@ class SelectableCmarkMarkdownColumn extends StatelessWidget {
     this.theme,
     this.padding = EdgeInsets.zero,
     this.textScaleFactor,
+    this.parserOptions = const CmarkParserOptions(enableMath: true),
   });
 
   final String? data;
@@ -172,6 +185,7 @@ class SelectableCmarkMarkdownColumn extends StatelessWidget {
   final CmarkThemeData? theme;
   final EdgeInsetsGeometry padding;
   final double? textScaleFactor;
+  final CmarkParserOptions parserOptions;
 
   @override
   Widget build(BuildContext context) {
@@ -183,6 +197,7 @@ class SelectableCmarkMarkdownColumn extends StatelessWidget {
       padding: padding,
       selectable: true,
       textScaleFactor: textScaleFactor,
+      parserOptions: parserOptions,
     );
   }
 }

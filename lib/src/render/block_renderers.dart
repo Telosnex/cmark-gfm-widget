@@ -1,4 +1,5 @@
 import 'package:cmark_gfm/cmark_gfm.dart';
+import 'package:flutter_math_fork/flutter_math.dart';
 import 'package:pixel_snap/material.dart';
 
 import '../parser/document_snapshot.dart';
@@ -16,6 +17,11 @@ class BlockRenderResult {
   final Widget widget;
 }
 
+typedef BlockMathWidgetBuilder = Widget Function(
+  CmarkNode node,
+  BlockRenderContext context,
+);
+
 class BlockRenderContext {
   BlockRenderContext({
     required this.theme,
@@ -25,6 +31,7 @@ class BlockRenderContext {
     required this.renderFootnoteDefinitions,
     required this.tableOptions,
     required this.codeBlockWrapper,
+    this.mathBlockBuilder,
   });
 
   final CmarkThemeData theme;
@@ -34,6 +41,7 @@ class BlockRenderContext {
   final bool renderFootnoteDefinitions;
   final TableRenderOptions tableOptions;
   final CodeBlockWrapperBuilder? codeBlockWrapper;
+  final BlockMathWidgetBuilder? mathBlockBuilder;
 }
 
 List<BlockRenderResult> renderDocumentBlocks(
@@ -99,6 +107,8 @@ Widget? _renderBlock(
       );
     case CmarkNodeType.footnoteDefinition:
       return _buildFootnoteDefinition(node, context, listLevel: listLevel);
+    case CmarkNodeType.mathBlock:
+      return _buildMathBlock(node, context);
     case CmarkNodeType.customBlock:
       return _buildTextualBlock(
         node,
@@ -266,6 +276,12 @@ Widget _buildCodeBlock(CmarkNode node, BlockRenderContext context) {
   }
 
   return result;
+}
+
+Widget _buildMathBlock(CmarkNode node, BlockRenderContext context) {
+  final builder = context.mathBlockBuilder ?? _defaultMathBlockBuilder;
+  final widget = builder(node, context);
+  return _wrapWithSpacing(widget, context.theme.blockSpacing);
 }
 
 Widget _buildList(
@@ -556,6 +572,36 @@ Widget _wrapWithSpacing(Widget child, EdgeInsets padding) {
     return child;
   }
   return Padding(padding: padding, child: child);
+}
+
+Widget _defaultMathBlockBuilder(
+  CmarkNode node,
+  BlockRenderContext context,
+) {
+  final literal = node.mathData.literal;
+  if (literal.isEmpty) {
+    return const SizedBox.shrink();
+  }
+
+  Widget child = Math.tex(
+    literal,
+    mathStyle: MathStyle.display,
+    textStyle: context.theme.paragraphTextStyle,
+    onErrorFallback: (error) => Text(
+      literal,
+      style: context.theme.paragraphTextStyle,
+    ),
+  );
+
+  child = SingleChildScrollView(
+    scrollDirection: Axis.horizontal,
+    child: Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: child,
+    ),
+  );
+
+  return child;
 }
 
 String _collectPlainText(CmarkNode node) {

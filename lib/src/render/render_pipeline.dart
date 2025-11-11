@@ -1,3 +1,4 @@
+import 'package:cmark_gfm/cmark_gfm.dart';
 import 'package:flutter/widgets.dart';
 
 import '../parser/document_snapshot.dart';
@@ -15,6 +16,7 @@ class RenderOptions {
     this.footnoteReferenceBuilder,
     this.renderFootnoteDefinitions = true,
     this.tableOptions = const TableRenderOptions(),
+    this.codeBlockWrapper,
   });
 
   final bool selectable;
@@ -22,6 +24,26 @@ class RenderOptions {
   final FootnoteReferenceSpanBuilder? footnoteReferenceBuilder;
   final bool renderFootnoteDefinitions;
   final TableRenderOptions tableOptions;
+  final CodeBlockWrapperBuilder? codeBlockWrapper;
+}
+
+/// Signature for wrapping code blocks with additional UI (e.g., copy button).
+typedef CodeBlockWrapperBuilder = Widget Function(
+  Widget codeBlock,
+  CodeBlockMetadata metadata,
+);
+
+/// Metadata about a code block.
+class CodeBlockMetadata {
+  const CodeBlockMetadata({
+    required this.node,
+    required this.info,
+    required this.literal,
+  });
+
+  final CmarkNode node;
+  final String info;
+  final String literal;
 }
 
 class RenderPipeline {
@@ -44,6 +66,7 @@ class RenderPipeline {
       textScaleFactor: options.textScaleFactor,
       renderFootnoteDefinitions: options.renderFootnoteDefinitions,
       tableOptions: options.tableOptions,
+      codeBlockWrapper: options.codeBlockWrapper,
     );
 
     return renderDocumentBlocks(snapshot, blockContext);

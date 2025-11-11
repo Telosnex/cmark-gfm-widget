@@ -5,7 +5,7 @@ import '../parser/document_snapshot.dart';
 import '../theme/cmark_theme.dart';
 import '../highlight/highlight_adapter.dart';
 import 'inline_renderers.dart';
-import 'table_options.dart';
+import 'render_pipeline.dart';
 
 final HighlightAdapter _highlightAdapter = HighlightAdapter();
 
@@ -24,6 +24,7 @@ class BlockRenderContext {
     required this.textScaleFactor,
     required this.renderFootnoteDefinitions,
     required this.tableOptions,
+    required this.codeBlockWrapper,
   });
 
   final CmarkThemeData theme;
@@ -32,6 +33,7 @@ class BlockRenderContext {
   final double textScaleFactor;
   final bool renderFootnoteDefinitions;
   final TableRenderOptions tableOptions;
+  final CodeBlockWrapperBuilder? codeBlockWrapper;
 }
 
 List<BlockRenderResult> renderDocumentBlocks(
@@ -151,8 +153,14 @@ Widget _buildTextualBlock(
   }
 
   final widget = context.selectable
-      ? SelectableText.rich(
-          textSpan,
+      ? Text.rich(
+          TextSpan(
+            children: [
+              textSpan,
+              // Invisible \r ensures copy/paste includes line breaks between blocks
+              const TextSpan(text: '\r', style: TextStyle(fontSize: 0, height: 0)),
+            ],
+          ),
           textScaler: TextScaler.linear(context.textScaleFactor),
         )
       : RichText(
@@ -219,8 +227,15 @@ Widget _buildCodeBlock(CmarkNode node, BlockRenderContext context) {
   );
 
   final child = context.selectable
-      ? SelectableText.rich(
-          textSpan,
+      ? Text.rich(
+          TextSpan(
+            children: [
+              textSpan,
+              // Invisible \r ensures copy/paste includes line breaks between blocks
+              const TextSpan(text: '\r', style: TextStyle(fontSize: 0, height: 0)),
+            ],
+          ),
+          softWrap: false,
           textScaler: TextScaler.linear(context.textScaleFactor),
         )
       : RichText(
@@ -232,12 +247,25 @@ Widget _buildCodeBlock(CmarkNode node, BlockRenderContext context) {
   // If we wrap in a [SingleChildScrollView], its impossible for clients to
   // do things like have the codeblock in a container that applys a "fade"
   // effect at the edges. Therefore, we do not do that here.
-  return Container(
+  Widget result = Container(
     padding: context.theme.codeBlockPadding,
     margin: context.theme.blockSpacing,
     color: context.theme.codeBlockBackgroundColor,
     child: child,
   );
+
+  // Let client wrap with additional UI (e.g., copy button)
+  final wrapper = context.codeBlockWrapper;
+  if (wrapper != null) {
+    final metadata = CodeBlockMetadata(
+      node: node,
+      info: node.codeData.info,
+      literal: node.codeData.literal,
+    );
+    result = wrapper(result, metadata);
+  }
+
+  return result;
 }
 
 Widget _buildList(
@@ -369,8 +397,14 @@ Widget _buildTable(CmarkNode node, BlockRenderContext context) {
 
       final textAlign = _textAlignForCell(columnAlignments[columnIndex]);
       final alignedChild = context.selectable
-          ? SelectableText.rich(
-              textSpan,
+          ? Text.rich(
+              TextSpan(
+                children: [
+                  textSpan,
+                  // Invisible \r for copy/paste
+                  const TextSpan(text: '\r', style: TextStyle(fontSize: 0, height: 0)),
+                ],
+              ),
               textAlign: textAlign,
               textScaler: TextScaler.linear(context.textScaleFactor),
             )

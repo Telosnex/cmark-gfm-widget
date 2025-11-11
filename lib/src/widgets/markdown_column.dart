@@ -135,13 +135,14 @@ class _CmarkMarkdownColumnState extends State<CmarkMarkdownColumn> {
 
     final children = _pipeline.buildWidgets(snapshot, theme, options);
 
-    return Padding(
-      padding: widget.padding,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: children,
-      ),
+    final column = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: children,
     );
+
+    final content = widget.selectable ? SelectionArea(child: column) : column;
+
+    return Padding(padding: widget.padding, child: content);
   }
 
   @override

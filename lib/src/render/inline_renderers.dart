@@ -225,6 +225,19 @@ InlineSpan _defaultInlineMathSpanBuilder(
     alignment:
         display ? PlaceholderAlignment.middle : PlaceholderAlignment.baseline,
     baseline: display ? null : TextBaseline.alphabetic,
-    child: child,
+    child: Stack(
+      children: [
+        // Invisible text with LaTeX source - this gets selected/copied
+        Positioned.fill(
+          child: Text(
+            literal,
+            style: const TextStyle(color: Colors.transparent),
+            overflow: TextOverflow.clip,
+          ),
+        ),
+        // Visible Math widget - ignores pointer events
+        IgnorePointer(child: child),
+      ],
+    ),
   );
 }

@@ -6,3 +6,5 @@ export 'src/parser/stable_id_registry.dart';
 export 'src/render/render_pipeline.dart';
 export 'src/theme/cmark_theme.dart';
 export 'src/widgets/markdown_column.dart';
+export 'src/widgets/selection_delegate.dart';
+export 'src/flutter/selection_area.dart';

@@ -79,6 +79,38 @@ Widget? _renderBlock(
     case CmarkNodeType.codeBlock:
       return _buildCodeBlock(node, context);
     case CmarkNodeType.thematicBreak:
+      if (context.selectable) {
+        // Use a Text widget that looks like a divider and copies as ===
+        return _wrapWithSpacing(
+          Padding(
+            padding: EdgeInsets.symmetric(
+              vertical: theme.thematicBreakVerticalPadding / 2,
+            ),
+            child: Container(
+              height: theme.thematicBreakThickness,
+              color: theme.thematicBreakColor,
+              alignment: Alignment.centerLeft,
+              child: const Text.rich(
+                TextSpan(
+                  children: [
+                    TextSpan(
+                      text: '===',
+                      style: TextStyle(color: Colors.transparent, fontSize: 0),
+                    ),
+                    TextSpan(
+                      text: '\r',
+                      style: TextStyle(fontSize: 0),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          theme.blockSpacing,
+        );
+      }
+
+      // Non-selectable: use regular Divider
       final verticalPadding =
           (theme.thematicBreakVerticalPadding / 2).clamp(0.0, double.infinity);
       final divider = Divider(
@@ -162,19 +194,23 @@ Widget _buildTextualBlock(
     }
   }
 
+  // Add invisible \r to TextSpan for copy/paste line breaks
+  final effectiveSpan = context.selectable
+      ? TextSpan(
+          children: [
+            textSpan,
+            const TextSpan(text: '\r', style: TextStyle(fontSize: 0)),
+          ],
+        )
+      : textSpan;
+
   final widget = context.selectable
       ? Text.rich(
-          TextSpan(
-            children: [
-              textSpan,
-              // Invisible \r ensures copy/paste includes line breaks between blocks
-              const TextSpan(text: '\r', style: TextStyle(fontSize: 0, height: 0)),
-            ],
-          ),
+          effectiveSpan,
           textScaler: TextScaler.linear(context.textScaleFactor),
         )
       : RichText(
-          text: textSpan,
+          text: effectiveSpan,
           textScaler: TextScaler.linear(context.textScaleFactor),
         );
 
@@ -238,13 +274,7 @@ Widget _buildCodeBlock(CmarkNode node, BlockRenderContext context) {
 
   final child = context.selectable
       ? Text.rich(
-          TextSpan(
-            children: [
-              textSpan,
-              // Invisible \r ensures copy/paste includes line breaks between blocks
-              const TextSpan(text: '\r', style: TextStyle(fontSize: 0, height: 0)),
-            ],
-          ),
+          textSpan,
           softWrap: false,
           textScaler: TextScaler.linear(context.textScaleFactor),
         )
@@ -307,6 +337,7 @@ Widget _buildList(
         level: level,
       ),
     );
+
     item = item.next;
   }
   return _wrapWithSpacing(
@@ -323,7 +354,7 @@ Widget _buildListItem(
   required bool tight,
   required int level,
 }) {
-  final bulletText = ordered ? '$index.' : '\u2022';
+  final bulletText = ordered ? '$index. ' : '\u2022 ';
   final children = <Widget>[];
   var child = item.firstChild;
   while (child != null) {
@@ -340,6 +371,19 @@ Widget _buildListItem(
 
   final resolvedLevel = level < 1 ? 1 : level;
 
+  final rowChildren = <Widget>[
+    Text(
+      bulletText,
+      style: ordered
+          ? context.theme.orderedListBulletTextStyle
+          : context.theme.unorderedListBulletTextStyle,
+      textAlign: TextAlign.right,
+    ),
+    SizedBox(width: context.theme.listBulletGap),
+  ];
+
+  rowChildren.add(Expanded(child: column));
+
   return Padding(
     padding: EdgeInsets.only(
       left: ordered
@@ -349,17 +393,7 @@ Widget _buildListItem(
     ),
     child: Row(
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          bulletText,
-          style: ordered
-              ? context.theme.orderedListBulletTextStyle
-              : context.theme.unorderedListBulletTextStyle,
-          textAlign: TextAlign.right,
-        ),
-        SizedBox(width: context.theme.listBulletGap),
-        Expanded(child: column),
-      ],
+      children: rowChildren,
     ),
   );
 }
@@ -414,13 +448,7 @@ Widget _buildTable(CmarkNode node, BlockRenderContext context) {
       final textAlign = _textAlignForCell(columnAlignments[columnIndex]);
       final alignedChild = context.selectable
           ? Text.rich(
-              TextSpan(
-                children: [
-                  textSpan,
-                  // Invisible \r for copy/paste
-                  const TextSpan(text: '\r', style: TextStyle(fontSize: 0, height: 0)),
-                ],
-              ),
+              textSpan,
               textAlign: textAlign,
               textScaler: TextScaler.linear(context.textScaleFactor),
             )
@@ -600,6 +628,24 @@ Widget _defaultMathBlockBuilder(
       child: child,
     ),
   );
+
+  // Stack with invisible LaTeX source for copy/paste when selectable
+  if (context.selectable) {
+    child = Stack(
+      children: [
+        // Invisible text with LaTeX source - this gets selected/copied
+        Positioned.fill(
+          child: Text(
+            literal,
+            style: const TextStyle(color: Colors.transparent),
+            overflow: TextOverflow.clip,
+          ),
+        ),
+        // Visible Math widget - ignores pointer events
+        IgnorePointer(child: child),
+      ],
+    );
+  }
 
   return child;
 }

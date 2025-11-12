@@ -1,5 +1,7 @@
 import 'package:cmark_gfm/cmark_gfm.dart';
-import 'package:pixel_snap/material.dart';
+import 'package:flutter/material.dart' hide SelectionArea;
+
+import '../flutter/selection_area.dart';
 
 import '../parser/document_snapshot.dart';
 import '../parser/parser_controller.dart';
@@ -152,6 +154,7 @@ class _CmarkMarkdownColumnState extends State<CmarkMarkdownColumn> {
       children: children,
     );
 
+    // Use SelectionArea to enable cross-block selection
     final content = widget.selectable ? SelectionArea(child: column) : column;
 
     return Padding(padding: widget.padding, child: content);

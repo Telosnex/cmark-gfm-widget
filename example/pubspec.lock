@@ -213,7 +213,7 @@ packages:
     source: hosted
     version: "7.0.1"
   pixel_snap:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: pixel_snap
       sha256: "677410ea37b07cd37ecb6d5e6c0d8d7615a7cf3bd92ba406fd1ac57e937d1fb0"

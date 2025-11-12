@@ -1,5 +1,6 @@
 import 'package:cmark_gfm/cmark_gfm.dart';
 import 'package:flutter/material.dart' hide SelectionArea;
+import 'package:flutter/rendering.dart' show SelectedContent;
 
 import '../flutter/selection_area.dart';
 
@@ -20,6 +21,7 @@ class CmarkMarkdownColumn extends StatefulWidget {
     this.selectable = false,
     this.textScaleFactor,
     this.parserOptions = const CmarkParserOptions(enableMath: true),
+    this.onSelectionChanged,
   }) : assert(
          (data != null) ^ (snapshot != null),
          'Provide either data or snapshot.',
@@ -48,6 +50,9 @@ class CmarkMarkdownColumn extends StatefulWidget {
 
   /// Parser configuration used when creating an internal [ParserController].
   final CmarkParserOptions parserOptions;
+  
+  /// Callback when selection changes (only used when selectable=true).
+  final void Function(SelectedContent?)? onSelectionChanged;
 
   @override
   State<CmarkMarkdownColumn> createState() => _CmarkMarkdownColumnState();
@@ -153,10 +158,14 @@ class _CmarkMarkdownColumnState extends State<CmarkMarkdownColumn> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: children,
     );
-
+    
     // Use SelectionArea to enable cross-block selection
-    final content = widget.selectable ? SelectionArea(child: column) : column;
-
+    final content = widget.selectable 
+        ? SelectionArea(
+            onSelectionChanged: widget.onSelectionChanged,
+            child: column,
+          )
+        : column;
     return Padding(padding: widget.padding, child: content);
   }
 
@@ -180,6 +189,7 @@ class SelectableCmarkMarkdownColumn extends StatelessWidget {
     this.padding = EdgeInsets.zero,
     this.textScaleFactor,
     this.parserOptions = const CmarkParserOptions(enableMath: true),
+    this.onSelectionChanged,
   });
 
   final String? data;
@@ -189,6 +199,7 @@ class SelectableCmarkMarkdownColumn extends StatelessWidget {
   final EdgeInsetsGeometry padding;
   final double? textScaleFactor;
   final CmarkParserOptions parserOptions;
+  final void Function(SelectedContent?)? onSelectionChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -201,6 +212,7 @@ class SelectableCmarkMarkdownColumn extends StatelessWidget {
       selectable: true,
       textScaleFactor: textScaleFactor,
       parserOptions: parserOptions,
+      onSelectionChanged: onSelectionChanged,
     );
   }
 }

@@ -17,6 +17,8 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:vector_math/vector_math_64.dart';
+
+import '../widgets/source_markdown_registry.dart';
 // Examples can assume:
 // late GlobalKey key;
 
@@ -2771,16 +2773,42 @@ abstract class MultiSelectableSelectionContainerDelegate extends SelectionContai
     _endHandleLayerOwner!.pushHandleLayers(null, effectiveEndHandle);
   }
 
+  /// Try to find source markdown by checking registry for RenderObject ancestors.
+  String? _findSourceMarkdown(Selectable selectable) {
+    RenderObject? renderObject;
+
+    if (selectable is RenderObject) {
+      renderObject = selectable as RenderObject;
+    } else {
+      // Try to get RenderObject from _SelectableFragment.paragraph (via dynamic)
+      try {
+        renderObject = (selectable as dynamic).paragraph as RenderObject?;
+      } catch (e) {
+        // Could not get RenderObject via dynamic access
+      }
+    }
+
+    if (renderObject == null) {
+      return null;
+    }
+
+    return SourceMarkdownRegistry.instance.findSourceForRenderObject(renderObject);
+  }
+
   /// Copies the selected contents of all [Selectable]s.
   @override
   SelectedContent? getSelectedContent() {
-    debugLog(() => '🔍 PATCHED getSelectedContent() called!');
-    final List<(SelectedContent, Rect)> selections = <(SelectedContent, Rect)>[
+    final List<(SelectedContent, Rect, String?)> selections =
+        <(SelectedContent, Rect, String?)>[
       for (final Selectable selectable in selectables)
         if (selectable.getSelectedContent() case final SelectedContent data)
-          (data, MatrixUtils.transformRect(selectable.getTransformTo(null), _getBoundingBox(selectable))),
+          (
+            data,
+            MatrixUtils.transformRect(
+                selectable.getTransformTo(null), _getBoundingBox(selectable)),
+            _findSourceMarkdown(selectable)
+          ),
     ];
-    debugLog(() => '📦 Found ${selections.length} selections');
     if (selections.isEmpty) {
       return null;
     }
@@ -2801,22 +2829,27 @@ abstract class MultiSelectableSelectionContainerDelegate extends SelectionContai
     debugLog(() => '📐 Sorted selections by position (Y then X, tolerance=2px)');
     
     final StringBuffer buffer = StringBuffer();
-    (SelectedContent, Rect)? last;
-    for (final (SelectedContent, Rect) selection in selections) {
+    (SelectedContent, Rect, String?)? last;
+    String? lastSourceUsed;
+    for (final (SelectedContent, Rect, String?) selection in selections) {
+      // Deduplicate FIRST: skip if this is the same source as last block
+      if (selection.$3 != null && selection.$3 == lastSourceUsed) {
+        continue;
+      }
+      
       if (last != null) {
         // Use top-to-top distance instead of top-to-bottom (bounding boxes can be unreliable)
         final topDiff = selection.$2.top - last.$2.top;
         final addNewline = topDiff > 5; // More than 5px vertical distance = new line
-        final preview = selection.$1.plainText.length > 20 ? selection.$1.plainText.substring(0, 20) : selection.$1.plainText;
-        debugLog(() => '  Block "$preview..." @ top=${selection.$2.top.toStringAsFixed(1)}, topDiff=${topDiff.toStringAsFixed(1)} → newline=$addNewline');
         if (addNewline) {
           buffer.writeln();
         }
-      } else {
-        final preview = selection.$1.plainText.length > 20 ? selection.$1.plainText.substring(0, 20) : selection.$1.plainText;
-        debugLog(() => '  FIRST block: "$preview..." @ top=${selection.$2.top.toStringAsFixed(1)}, bottom=${selection.$2.bottom.toStringAsFixed(1)}');
       }
-      buffer.write(selection.$1.plainText);
+      
+      // Use source markdown if available, otherwise fall back to rendered text
+      final textToWrite = selection.$3 ?? selection.$1.plainText;
+      buffer.write(textToWrite);
+      lastSourceUsed = selection.$3;
       last = selection;
     }
     debugLog(() => '📋 Final clipboard text length: ${buffer.length}');

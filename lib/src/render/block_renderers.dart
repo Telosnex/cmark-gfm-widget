@@ -5,16 +5,21 @@ import 'package:pixel_snap/material.dart';
 import '../parser/document_snapshot.dart';
 import '../theme/cmark_theme.dart';
 import '../highlight/highlight_adapter.dart';
+import '../widgets/source_aware_widget.dart';
 import 'inline_renderers.dart';
 import 'render_pipeline.dart';
 
 final HighlightAdapter _highlightAdapter = HighlightAdapter();
 
 class BlockRenderResult {
-  BlockRenderResult({required this.id, required this.widget});
+  BlockRenderResult(
+      {required this.id, required this.widget, this.sourceMarkdown});
 
   final String id;
   final Widget widget;
+
+  /// Original markdown source for this block (if available)
+  final String? sourceMarkdown;
 }
 
 typedef BlockMathWidgetBuilder = Widget Function(
@@ -50,11 +55,23 @@ List<BlockRenderResult> renderDocumentBlocks(
 ) {
   final results = <BlockRenderResult>[];
   for (final block in snapshot.blocks) {
-    final widget = _renderBlock(block, context);
+    var widget = _renderBlock(block, context);
     if (widget == null) continue;
+
     final metadata = DocumentSnapshot.metadataFor(block);
     final id = metadata?.id ?? 'block-${results.length}';
-    results.add(BlockRenderResult(id: id, widget: widget));
+    final sourceMarkdown = snapshot.getNodeSource(block);
+
+    // Wrap with source metadata if available (for intelligent copy/paste)
+    if (context.selectable && sourceMarkdown != null) {
+      widget = SourceAwareWidget(
+        sourceMarkdown: sourceMarkdown,
+        child: widget,
+      );
+    }
+
+    results.add(BlockRenderResult(
+        id: id, widget: widget, sourceMarkdown: sourceMarkdown));
   }
   return results;
 }
@@ -94,7 +111,7 @@ Widget? _renderBlock(
                 TextSpan(
                   children: [
                     TextSpan(
-                      text: '===',
+                      text: '\r---\r',
                       style: TextStyle(color: Colors.transparent, fontSize: 0),
                     ),
                     TextSpan(
@@ -204,15 +221,12 @@ Widget _buildTextualBlock(
         )
       : textSpan;
 
-  final widget = context.selectable
-      ? Text.rich(
-          effectiveSpan,
-          textScaler: TextScaler.linear(context.textScaleFactor),
-        )
-      : RichText(
-          text: effectiveSpan,
-          textScaler: TextScaler.linear(context.textScaleFactor),
-        );
+  // Use pixel_snap's Text.rich for both selectable and non-selectable
+  // SelectableRegion (from SelectionArea) makes it selectable automatically
+  final widget = Text.rich(
+    effectiveSpan,
+    textScaler: TextScaler.linear(context.textScaleFactor),
+  );
 
   return _wrapWithSpacing(widget, context.theme.blockSpacing);
 }

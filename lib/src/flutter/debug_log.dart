@@ -2,10 +2,10 @@ import 'package:flutter/foundation.dart';
 
 void debugLog(String Function() messageBuilder) {
   // ignore: dead_code
-  if (true && !kDebugMode) {
+  if (true || !kDebugMode) {
     return;
   }
 
-  // ignore: avoid_print
+  // ignore: avoid_print, dead_code
   print('[cmark_gfm_widget] ${messageBuilder()}');
 }

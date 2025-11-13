@@ -5,8 +5,12 @@ import 'stable_id_registry.dart';
 
 /// Immutable representation of a parsed Markdown document.
 class DocumentSnapshot {
-  DocumentSnapshot._(
-      {required this.root, required this.revision, this.sourceMarkdown});
+  DocumentSnapshot._({
+    required this.root,
+    required this.revision,
+    this.sourceMarkdown,
+    List<int>? lineOffsets,
+  }) : _lineOffsets = lineOffsets;
 
   /// Root node of the document (always of type [CmarkNodeType.document]).
   final CmarkNode root;
@@ -16,6 +20,9 @@ class DocumentSnapshot {
 
   /// Original markdown source, used for extracting source ranges.
   final String? sourceMarkdown;
+
+  /// Precomputed start offsets for each line (1-based index).
+  final List<int>? _lineOffsets;
 
   /// Returns an iterable of top-level block nodes.
   Iterable<CmarkNode> get blocks sync* {
@@ -36,7 +43,12 @@ class DocumentSnapshot {
     _assignMetadata(root, registry, revision);
     registry.prune(revision - 1);
     return DocumentSnapshot._(
-        root: root, revision: revision, sourceMarkdown: sourceMarkdown);
+      root: root,
+      revision: revision,
+      sourceMarkdown: sourceMarkdown,
+      lineOffsets:
+          sourceMarkdown != null ? _computeLineOffsets(sourceMarkdown) : null,
+    );
   }
 
   static void _assignMetadata(
@@ -69,36 +81,33 @@ class DocumentSnapshot {
   int? lineColToOffset(int line, int column) {
     final source = sourceMarkdown;
     if (source == null) return null;
-
-    int offset = 0;
-    int currentLine = 1;
-    int currentCol = 1;
-
-    while (offset < source.length) {
-      if (currentLine == line && currentCol == column) {
-        return offset;
-      }
-
-      if (source[offset] == '\n') {
-        // If we're on the target line and column is beyond line end, return end of line
-        if (currentLine == line && column > currentCol) {
-          return offset;
-        }
-        currentLine++;
-        currentCol = 1;
-      } else {
-        currentCol++;
-      }
-      offset++;
+    final offsets = _lineOffsets;
+    if (offsets == null || line < 1 || line > offsets.length) {
+      return null;
     }
 
-    // Reached end of file
-    if (currentLine == line) {
-      // If column is at or beyond end of line, return offset (end of file or line)
-      return offset;
+    if (column <= 0) {
+      final currentStart = offsets[line - 1];
+      final newlinePos = currentStart - 1;
+      return newlinePos >= 0 ? newlinePos : 0;
     }
 
-    return null;
+    final start = offsets[line - 1];
+    final nextStart = line < offsets.length ? offsets[line] : source.length;
+    final hasNewline =
+        nextStart > start && source.codeUnitAt(nextStart - 1) == 0x0A;
+    final contentEnd = hasNewline ? nextStart - 1 : nextStart;
+    final maxColumn = (contentEnd - start) + 1;
+
+    if (column <= maxColumn) {
+      return start + (column - 1);
+    }
+
+    if (hasNewline) {
+      return nextStart - 1;
+    }
+
+    return source.length;
   }
 
   /// Extract the original markdown source for a node.
@@ -118,19 +127,13 @@ class DocumentSnapshot {
     // Column 0 means "start of line" - find end of previous line
     int? endOffsetRaw;
     if (node.endColumn == 0) {
-      // Find the newline that ends line (endLine - 1)
-      int offset = 0;
-      int currentLine = 1;
-      while (offset < source.length && currentLine < node.endLine) {
-        if (source[offset] == '\n') {
-          currentLine++;
-          if (currentLine == node.endLine) {
-            endOffsetRaw = offset; // Position of the newline
-            break;
-          }
+      final offsets = _lineOffsets;
+      if (offsets != null && node.endLine - 1 < offsets.length) {
+        final newlinePos = offsets[node.endLine - 1] - 1;
+        if (newlinePos >= 0 && newlinePos < source.length) {
+          endOffsetRaw = newlinePos;
         }
-        offset++;
-      }    } else {
+      }
       endOffsetRaw = lineColToOffset(node.endLine, node.endColumn);
     }
 
@@ -171,4 +174,14 @@ class DocumentSnapshot {
         '✅ getNodeSource: lines ${node.startLine}:${node.startColumn} to ${node.endLine}:${node.endColumn} extracted ${extracted.length} chars: "${extracted.replaceAll('\n', '\\n')}"');
     return extracted;
   }
+}
+
+List<int> _computeLineOffsets(String source) {
+  final offsets = <int>[0];
+  for (var i = 0; i < source.length; i++) {
+    if (source.codeUnitAt(i) == 0x0A) {
+      offsets.add(i + 1);
+    }
+  }
+  return offsets;
 }

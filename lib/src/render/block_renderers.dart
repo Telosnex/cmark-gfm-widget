@@ -278,9 +278,10 @@ Widget _buildCodeBlock(CmarkNode node, BlockRenderContext context) {
     code: literal,
     baseStyle: context.theme.codeBlockTextStyle,
     theme: highlightConfig.theme,
-    autoDetectLanguage: language == null ||
-        language.isEmpty ||
-        language == highlightConfig.defaultLanguage,
+    // Autodetection is expensive, error-prone, and throws exceptions as a
+    // regular part of its operation, resulting in prints without attribution.
+    // Therefore, we rely on parsing from the fence, or just use plain text.
+    autoDetectLanguage: false,
     language: language,
     fallbackStyle: context.theme.codeBlockTextStyle,
     tabSize: highlightConfig.tabSize,

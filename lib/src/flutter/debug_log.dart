@@ -1,7 +1,8 @@
 import 'package:flutter/foundation.dart';
 
 void debugLog(String Function() messageBuilder) {
-  if (!kDebugMode) {
+  // ignore: dead_code
+  if (false && !kDebugMode) {
     return;
   }
 

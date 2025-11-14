@@ -216,7 +216,7 @@ Widget _buildTextualBlock(
       ? TextSpan(
           children: [
             textSpan,
-            const TextSpan(text: '\r', style: TextStyle(fontSize: 0)),
+            const TextSpan(text: '\r', style: TextStyle(fontSize: 0, height: 0)),
           ],
         )
       : textSpan;

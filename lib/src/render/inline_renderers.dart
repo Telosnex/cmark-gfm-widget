@@ -61,12 +61,18 @@ InlineSpan _renderInlineNode(
     case CmarkNodeType.linebreak:
       return const TextSpan(text: '\n');
     case CmarkNodeType.code:
-      final merged = baseStyle.merge(context.theme.codeSpanTextStyle);
+      final theme = context.theme;
+      final merged = baseStyle.merge(theme.codeSpanTextStyle);
       // Keep the surrounding typography metrics (font size/height) so inline
       // code inside headings or other custom styles doesn't drop back to the
-      // default body size when the theme supplies explicit values.
+      // default body size when the theme supplies explicit values. We then
+      // apply the theme-provided scale factor to slightly shrink the text.
+      double? resolvedFontSize = baseStyle.fontSize ?? merged.fontSize;
+      if (resolvedFontSize != null) {
+        resolvedFontSize *= theme.inlineCodeFontScale;
+      }
       final restored = merged.copyWith(
-        fontSize: baseStyle.fontSize,
+        fontSize: resolvedFontSize,
         height: baseStyle.height,
       );
       return TextSpan(

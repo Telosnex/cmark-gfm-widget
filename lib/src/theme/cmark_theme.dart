@@ -52,6 +52,8 @@ class CmarkThemeData {
     required this.paragraphTextStyle,
     required List<TextStyle> headingTextStyles,
     required this.codeSpanTextStyle,
+    // Chosen on 25-11-16 based on IM Fell and Jet Brains Mono.
+    this.inlineCodeFontScale = 0.85,
     required this.linkTextStyle,
     required this.emphasisTextStyle,
     required this.strongTextStyle,
@@ -83,6 +85,11 @@ class CmarkThemeData {
   final TextStyle paragraphTextStyle;
   final List<TextStyle> _headingTextStyles;
   final TextStyle codeSpanTextStyle;
+  /// Multiplier applied to the surrounding font size for inline code spans.
+  ///
+  /// Values < 1.0 make code appear slightly smaller than the surrounding text,
+  /// which often compensates for monospace glyphs appearing visually larger.
+  final double inlineCodeFontScale;
   final TextStyle linkTextStyle;
   final TextStyle emphasisTextStyle;
   final TextStyle strongTextStyle;
@@ -127,6 +134,7 @@ class CmarkThemeData {
     TextStyle? paragraphTextStyle,
     List<TextStyle>? headingTextStyles,
     TextStyle? codeSpanTextStyle,
+    double? inlineCodeFontScale,
     TextStyle? linkTextStyle,
     TextStyle? emphasisTextStyle,
     TextStyle? strongTextStyle,
@@ -159,6 +167,7 @@ class CmarkThemeData {
       headingTextStyles:
           headingTextStyles ?? List<TextStyle>.from(_headingTextStyles),
       codeSpanTextStyle: codeSpanTextStyle ?? this.codeSpanTextStyle,
+      inlineCodeFontScale: inlineCodeFontScale ?? this.inlineCodeFontScale,
       linkTextStyle: linkTextStyle ?? this.linkTextStyle,
       emphasisTextStyle: emphasisTextStyle ?? this.emphasisTextStyle,
       strongTextStyle: strongTextStyle ?? this.strongTextStyle,
@@ -220,6 +229,7 @@ class CmarkThemeData {
         fontFamily: 'monospace',
         backgroundColor: Colors.grey.shade200,
       ),
+      inlineCodeFontScale: 0.85,
       linkTextStyle: const TextStyle(
         color: Colors.blue,
         decoration: TextDecoration.underline,

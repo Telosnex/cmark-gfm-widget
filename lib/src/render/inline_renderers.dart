@@ -61,9 +61,17 @@ InlineSpan _renderInlineNode(
     case CmarkNodeType.linebreak:
       return const TextSpan(text: '\n');
     case CmarkNodeType.code:
+      final merged = baseStyle.merge(context.theme.codeSpanTextStyle);
+      // Keep the surrounding typography metrics (font size/height) so inline
+      // code inside headings or other custom styles doesn't drop back to the
+      // default body size when the theme supplies explicit values.
+      final restored = merged.copyWith(
+        fontSize: baseStyle.fontSize,
+        height: baseStyle.height,
+      );
       return TextSpan(
         text: node.content.toString(), // Inline code uses content, not codeData
-        style: baseStyle.merge(context.theme.codeSpanTextStyle),
+        style: restored,
       );
     case CmarkNodeType.htmlInline:
       return TextSpan(text: node.content.toString(), style: baseStyle);

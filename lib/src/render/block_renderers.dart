@@ -96,38 +96,8 @@ Widget? _renderBlock(
     case CmarkNodeType.codeBlock:
       return _buildCodeBlock(node, context);
     case CmarkNodeType.thematicBreak:
-      if (context.selectable) {
-        // Use a Text widget that looks like a divider and copies as ===
-        return _wrapWithSpacing(
-          Padding(
-            padding: EdgeInsets.symmetric(
-              vertical: theme.thematicBreakVerticalPadding / 2,
-            ),
-            child: Container(
-              height: theme.thematicBreakThickness,
-              color: theme.thematicBreakColor,
-              alignment: Alignment.centerLeft,
-              child: const Text.rich(
-                TextSpan(
-                  children: [
-                    TextSpan(
-                      text: '\r---\r',
-                      style: TextStyle(color: Colors.transparent, fontSize: 0),
-                    ),
-                    TextSpan(
-                      text: '\r',
-                      style: TextStyle(fontSize: 0),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          theme.blockSpacing,
-        );
-      }
-
-      // Non-selectable: use regular Divider
+      // Use regular Divider for both selectable/non-selectable
+      // SourceAwareWidget wrapper handles copy as '---' when selectable
       final verticalPadding =
           (theme.thematicBreakVerticalPadding / 2).clamp(0.0, double.infinity);
       final divider = Divider(
@@ -211,20 +181,11 @@ Widget _buildTextualBlock(
     }
   }
 
-  // Add invisible \r to TextSpan for copy/paste line breaks
-  final effectiveSpan = context.selectable
-      ? TextSpan(
-          children: [
-            textSpan,
-            const TextSpan(text: '\r', style: TextStyle(fontSize: 0, height: 0)),
-          ],
-        )
-      : textSpan;
-
   // Use pixel_snap's Text.rich for both selectable and non-selectable
   // SelectableRegion (from SelectionArea) makes it selectable automatically
+  // Position-aware getSelectedContent() adds line breaks automatically
   final widget = Text.rich(
-    effectiveSpan,
+    textSpan,
     textScaler: TextScaler.linear(context.textScaleFactor),
   );
 

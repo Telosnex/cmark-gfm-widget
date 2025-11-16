@@ -70,7 +70,7 @@ packages:
     description:
       path: "."
       ref: HEAD
-      resolved-ref: "084cee2b11aed1afa361dad25a0d5eab54ac86d8"
+      resolved-ref: f8ad3dd6f036786463062a4fb5fae858b902f55e
       url: "https://github.com/Telosnex/cmark-gfm-dart.git"
     source: git
     version: "0.1.0-dev"

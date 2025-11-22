@@ -1,4 +1,5 @@
 import 'package:cmark_gfm/cmark_gfm.dart';
+import 'package:cmark_gfm_widget/src/widgets/source_markdown_registry.dart';
 import 'package:flutter_math_fork/flutter_math.dart';
 import 'package:pixel_snap/material.dart';
 
@@ -8,6 +9,7 @@ import '../highlight/highlight_adapter.dart';
 import '../widgets/source_aware_widget.dart';
 import 'inline_renderers.dart';
 import 'render_pipeline.dart';
+import '../selection/leaf_text_registry.dart';
 
 final HighlightAdapter _highlightAdapter = HighlightAdapter();
 
@@ -65,7 +67,10 @@ List<BlockRenderResult> renderDocumentBlocks(
     // Wrap with source metadata if available (for intelligent copy/paste)
     if (context.selectable && sourceMarkdown != null) {
       widget = SourceAwareWidget(
-        sourceMarkdown: sourceMarkdown,
+        attachment: MarkdownSourceAttachment(
+          fullSource: sourceMarkdown,
+          blockNode: block,
+        ),
         child: widget,
       );
     }
@@ -96,8 +101,38 @@ Widget? _renderBlock(
     case CmarkNodeType.codeBlock:
       return _buildCodeBlock(node, context);
     case CmarkNodeType.thematicBreak:
-      // Use regular Divider for both selectable/non-selectable
-      // SourceAwareWidget wrapper handles copy as '---' when selectable
+      if (context.selectable) {
+        // Use a Text widget that looks like a divider and copies as ===
+        return _wrapWithSpacing(
+          Padding(
+            padding: EdgeInsets.symmetric(
+              vertical: theme.thematicBreakVerticalPadding / 2,
+            ),
+            child: Container(
+              height: theme.thematicBreakThickness,
+              color: theme.thematicBreakColor,
+              alignment: Alignment.centerLeft,
+              child: const Text.rich(
+                TextSpan(
+                  children: [
+                    TextSpan(
+                      text: '\r---\r',
+                      style: TextStyle(color: Colors.transparent, fontSize: 0),
+                    ),
+                    TextSpan(
+                      text: '\r',
+                      style: TextStyle(fontSize: 0),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          theme.blockSpacing,
+        );
+      }
+
+      // Non-selectable: use regular Divider
       final verticalPadding =
           (theme.thematicBreakVerticalPadding / 2).clamp(0.0, double.infinity);
       final divider = Divider(
@@ -181,11 +216,21 @@ Widget _buildTextualBlock(
     }
   }
 
+  // Add invisible \r to TextSpan for copy/paste line breaks
+  final effectiveSpan = context.selectable
+      ? TextSpan(
+          children: [
+            textSpan,
+            const TextSpan(
+                text: '\r', style: TextStyle(fontSize: 0, height: 0)),
+          ],
+        )
+      : textSpan;
+
   // Use pixel_snap's Text.rich for both selectable and non-selectable
   // SelectableRegion (from SelectionArea) makes it selectable automatically
-  // Position-aware getSelectedContent() adds line breaks automatically
   final widget = Text.rich(
-    textSpan,
+    effectiveSpan,
     textScaler: TextScaler.linear(context.textScaleFactor),
   );
 
@@ -375,6 +420,7 @@ Widget _buildListItem(
 }
 
 Widget _buildTable(CmarkNode node, BlockRenderContext context) {
+  TableLeafRegistry.instance.beginTable(node);
   final cellRows = <List<Widget>>[];
   final columnAlignments = <CmarkTableAlign>[];
   final dataRows = <List<String>>[];
@@ -388,6 +434,7 @@ Widget _buildTable(CmarkNode node, BlockRenderContext context) {
       rowNode = rowNode.next;
       continue;
     }
+    TableLeafRegistry.instance.beginRow(rowNode);
     final cells = <Widget>[];
     final cellTexts = <String>[];
     var cellNode = rowNode.firstChild;
@@ -422,7 +469,8 @@ Widget _buildTable(CmarkNode node, BlockRenderContext context) {
       );
 
       final textAlign = _textAlignForCell(columnAlignments[columnIndex]);
-      final alignedChild = context.selectable
+      final plainText = textSpan.toPlainText();
+      Widget alignedChild = context.selectable
           ? Text.rich(
               textSpan,
               textAlign: textAlign,
@@ -433,6 +481,18 @@ Widget _buildTable(CmarkNode node, BlockRenderContext context) {
               textAlign: textAlign,
               textScaler: TextScaler.linear(context.textScaleFactor),
             );
+
+      if (context.selectable) {
+        alignedChild = SourceAwareWidget(
+          attachment: MarkdownSourceAttachment(
+            fullSource: plainText,
+            blockNode: cellNode,
+          ),
+          child: alignedChild,
+        );
+      }
+
+      TableLeafRegistry.instance.addCell(cellNode, plainText);
 
       cells.add(
         Align(
@@ -449,6 +509,7 @@ Widget _buildTable(CmarkNode node, BlockRenderContext context) {
     }
     maxColumns = cells.length > maxColumns ? cells.length : maxColumns;
     cellRows.add(cells);
+    TableLeafRegistry.instance.endRow();
     if (rowNode.tableRowData.isHeader) {
       isHeaderProcessed = true;
       headerRow = cellTexts;
@@ -459,6 +520,7 @@ Widget _buildTable(CmarkNode node, BlockRenderContext context) {
   }
 
   if (cellRows.isEmpty) {
+    TableLeafRegistry.instance.endTable();
     return const SizedBox.shrink();
   }
 
@@ -506,8 +568,9 @@ Widget _buildTable(CmarkNode node, BlockRenderContext context) {
     );
     result = wrapper(result, metadata, wrapperContext);
   }
-
-  return _wrapWithSpacing(result, context.theme.blockSpacing);
+  final wrapped = _wrapWithSpacing(result, context.theme.blockSpacing);
+  TableLeafRegistry.instance.endTable();
+  return wrapped;
 }
 
 Widget _buildFootnoteDefinition(

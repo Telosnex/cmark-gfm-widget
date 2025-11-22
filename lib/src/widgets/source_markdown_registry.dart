@@ -1,4 +1,26 @@
+import 'package:cmark_gfm/cmark_gfm.dart';
 import 'package:flutter/rendering.dart';
+
+import '../selection/markdown_selection_model.dart';
+
+class MarkdownSourceAttachment {
+  MarkdownSourceAttachment({
+    required this.fullSource,
+    this.blockNode,
+  });
+
+  final String fullSource;
+  final CmarkNode? blockNode;
+
+  MarkdownSelectionModel? _selectionModel;
+  MarkdownSelectionModel? get selectionModel {
+    final node = blockNode;
+    if (node == null) {
+      return null;
+    }
+    return _selectionModel ??= MarkdownSelectionModel(node);
+  }
+}
 
 /// Global registry mapping RenderObjects to their original markdown source.
 /// 
@@ -10,15 +32,16 @@ class SourceMarkdownRegistry {
   static final SourceMarkdownRegistry instance = SourceMarkdownRegistry._();
   
   // Use Expando for object-identity mapping without preventing GC
-  final Expando<String> _registry = Expando<String>();
+  final Expando<MarkdownSourceAttachment> _registry =
+      Expando<MarkdownSourceAttachment>();
   
   /// Register source markdown for a RenderObject
-  void register(RenderObject renderObject, String sourceMarkdown) {
-    _registry[renderObject] = sourceMarkdown;
+  void register(RenderObject renderObject, MarkdownSourceAttachment attachment) {
+    _registry[renderObject] = attachment;
   }
   
   /// Find source markdown by checking the RenderObject and its ancestors
-  String? findSourceForRenderObject(RenderObject renderObject) {
+  MarkdownSourceAttachment? findAttachment(RenderObject renderObject) {
     int depth = 0;
     RenderObject? current = renderObject;
     while (current != null) {
@@ -33,6 +56,10 @@ class SourceMarkdownRegistry {
       }
     }
     return null;
+  }
+
+  String? findSourceForRenderObject(RenderObject renderObject) {
+    return findAttachment(renderObject)?.fullSource;
   }
   
   /// Clear isn't supported with Expando, but objects get GC'd naturally

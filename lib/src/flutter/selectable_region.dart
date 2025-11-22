@@ -19,6 +19,7 @@ import 'package:flutter/services.dart';
 import 'package:vector_math/vector_math_64.dart';
 
 import '../widgets/source_markdown_registry.dart';
+import '../selection/leaf_text_registry.dart';
 // Examples can assume:
 // late GlobalKey key;
 
@@ -2847,7 +2848,13 @@ abstract class MultiSelectableSelectionContainerDelegate extends SelectionContai
       }
       
       // Use source markdown if available, otherwise fall back to rendered text
-      final textToWrite = selection.$3 ?? selection.$1.plainText;
+      final plainText = selection.$1.plainText;
+      final tableMarkdown = TableLeafRegistry.instance.toMarkdown(plainText);
+      final rawTextOrSource = selection.$3 ?? plainText;
+      final textToWrite = tableMarkdown ?? rawTextOrSource;
+      debugLog(() =>
+          'SelectableRegion: fragment text="${plainText.replaceAll('\n', '\\n')}" '
+          'tableMarkdown=${tableMarkdown != null}');
       buffer.write(textToWrite);
       lastSourceUsed = selection.$3;
       last = selection;

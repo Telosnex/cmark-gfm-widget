@@ -45,7 +45,7 @@ void main(List<String> args) {
 
 InspectorOptions _parseArgs(List<String> args) {
   if (args.contains('--help') || args.contains('-h')) {
-    throw CoverageInspectorException(_kUsage);
+    throw const CoverageInspectorException(_kUsage);
   }
 
   String? source;
@@ -93,7 +93,7 @@ InspectorOptions _parseArgs(List<String> args) {
     } else if (lcov == null) {
       lcov = arg;
     } else {
-      throw CoverageInspectorException(
+      throw const CoverageInspectorException(
         'Too many positional arguments provided.\n$_kUsage',
       );
     }

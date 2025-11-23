@@ -2796,6 +2796,21 @@ abstract class MultiSelectableSelectionContainerDelegate extends SelectionContai
     return SourceMarkdownRegistry.instance.findSourceForRenderObject(renderObject);
   }
 
+  String? _sourceIfFullySelected(Selectable selectable, SelectedContent content) {
+    final source = _findSourceMarkdown(selectable);
+    if (source == null) {
+      return null;
+    }
+
+    final normalizedSource = source.trim();
+    final normalizedSelection = content.plainText.trim();
+    if (normalizedSource != normalizedSelection) {
+      return null;
+    }
+
+    return source;
+  }
+
   /// Copies the selected contents of all [Selectable]s.
   @override
   SelectedContent? getSelectedContent() {
@@ -2807,7 +2822,7 @@ abstract class MultiSelectableSelectionContainerDelegate extends SelectionContai
             data,
             MatrixUtils.transformRect(
                 selectable.getTransformTo(null), _getBoundingBox(selectable)),
-            _findSourceMarkdown(selectable)
+            _sourceIfFullySelected(selectable, data),
           ),
     ];
     if (selections.isEmpty) {
@@ -2833,6 +2848,9 @@ abstract class MultiSelectableSelectionContainerDelegate extends SelectionContai
     (SelectedContent, Rect, String?)? last;
     String? lastSourceUsed;
     for (final (SelectedContent, Rect, String?) selection in selections) {
+      debugLog(() =>
+          'SelectableRegion: fragment candidate plainTextLen=${selection.$1.plainText.length} '
+          'sourceLen=${selection.$3?.length ?? 0}');
       // Deduplicate FIRST: skip if this is the same source as last block
       if (selection.$3 != null && selection.$3 == lastSourceUsed) {
         continue;
@@ -2854,7 +2872,7 @@ abstract class MultiSelectableSelectionContainerDelegate extends SelectionContai
       final textToWrite = tableMarkdown ?? rawTextOrSource;
       debugLog(() =>
           'SelectableRegion: fragment text="${plainText.replaceAll('\n', '\\n')}" '
-          'tableMarkdown=${tableMarkdown != null}');
+          'tableMarkdown=${tableMarkdown != null} ★');
       buffer.write(textToWrite);
       lastSourceUsed = selection.$3;
       last = selection;

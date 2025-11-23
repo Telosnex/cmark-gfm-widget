@@ -3,7 +3,6 @@ import 'dart:math' as math;
 import 'package:cmark_gfm/cmark_gfm.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
-import 'package:vector_math/vector_math_64.dart';
 
 import '../flutter/debug_log.dart';
 import '../selection/markdown_selection_model.dart';

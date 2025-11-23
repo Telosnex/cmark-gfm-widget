@@ -6,7 +6,6 @@ import 'package:flutter/rendering.dart';
 import '../flutter/debug_log.dart';
 
 import '../widgets/source_markdown_registry.dart';
-import 'markdown_selection_model.dart';
 
 /// Represents a single selected fragment coming from a Selectable child.
 class SelectionFragment {
@@ -304,7 +303,7 @@ class SelectionSerializer {
         if (!firstBlock) {
           buffer.writeln();
         } else {
-          buffer.write('$marker');
+          buffer.write(marker);
         }
         final trimmedNested = (!firstBlock && nestedText.startsWith('\n'))
             ? nestedText.substring(1)
@@ -444,6 +443,16 @@ class SelectionSerializer {
       return fragment.plainText;
     }
 
+    final CmarkNodeType? nodeType = attachment.blockNode?.type;
+    if (nodeType == CmarkNodeType.list) {
+      final normalizedSource = attachment.fullSource.trim();
+      final normalizedPlainText = fragment.plainText.trim();
+      final bool fullSourceMatches = normalizedSource == normalizedPlainText;
+      if (!fullSourceMatches) {
+        return fragment.plainText;
+      }
+    }
+
     final model = attachment.selectionModel;
     if (model != null) {
       final snippet =
@@ -458,7 +467,6 @@ class SelectionSerializer {
       // the cell's own source. The selection system may have collapsed an
       // entire table into a single fragment, and using the cell source here
       // would drop all but the first cell.
-      final nodeType = attachment.blockNode?.type;
       if (nodeType == CmarkNodeType.tableCell) {
         return fragment.plainText;
       }

@@ -1,4 +1,4 @@
-library cmark_gfm_widget;
+library;
 
 export 'src/parser/parser_controller.dart';
 export 'src/parser/document_snapshot.dart';

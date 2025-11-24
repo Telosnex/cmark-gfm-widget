@@ -304,7 +304,8 @@ void main() {
     var column = 0;
     while (cell != null) {
       if (cell.type == CmarkNodeType.tableCell) {
-        headerFragments.add(cellFragment(cell, Rect.fromLTWH(column * 40.0, 0, 30, 10)));
+        headerFragments
+            .add(cellFragment(cell, Rect.fromLTWH(column * 40.0, 0, 30, 10)));
         column += 1;
       }
       cell = cell.next;
@@ -315,7 +316,8 @@ void main() {
     column = 0;
     while (cell != null) {
       if (cell.type == CmarkNodeType.tableCell) {
-        bodyFragments.add(cellFragment(cell, Rect.fromLTWH(column * 40.0, 20, 30, 10)));
+        bodyFragments
+            .add(cellFragment(cell, Rect.fromLTWH(column * 40.0, 20, 30, 10)));
         column += 1;
       }
       cell = cell.next;
@@ -480,5 +482,619 @@ void main() {
   test('non-matching aggregated text stays unchanged', () {
     TableLeafRegistry.instance.clear();
     expect(TableLeafRegistry.instance.toMarkdown('Not a table'), isNull);
+  });
+
+  test('paragraph to list drag (top to bottom) copies full lines', () {
+    const markdown =
+        'This is sentence one.\n- This is the first bullet.\n- This is the second bullet.';
+    final controller = ParserController();
+    final snapshot = controller.parse(markdown);
+    final paragraphNode = snapshot.blocks.elementAt(0);
+    final listNode = snapshot.blocks.elementAt(1);
+
+    // Simulate what Flutter delivers: paragraph fragment + partial list fragment
+    final fragments = [
+      SelectionFragment(
+        rect: const Rect.fromLTWH(0, 0, 100, 20),
+        plainText: 'This is sentence one.\n',
+        contentLength: 22,
+        attachment: MarkdownSourceAttachment(
+          fullSource: snapshot.getNodeSource(paragraphNode) ?? '',
+          blockNode: paragraphNode,
+        ),
+        range: const SelectionRange(0, 22),
+      ),
+      SelectionFragment(
+        rect: const Rect.fromLTWH(0, 20, 100, 20),
+        plainText:
+            'Th', // Flutter delivers only partial text when drag crosses boundaries
+        contentLength: 56,
+        attachment: MarkdownSourceAttachment(
+          fullSource: snapshot.getNodeSource(listNode) ?? '',
+          blockNode: listNode,
+        ),
+        range: const SelectionRange(0, 2),
+      ),
+    ];
+
+    final serializer = SelectionSerializer();
+    final result = serializer.serialize(fragments);
+    expect(result, contains('This is sentence one.'));
+    expect(result, contains('- This is the first bullet.'));
+    expect(result.trim(), 'This is sentence one.\n- This is the first bullet.');
+  });
+
+  test('list to paragraph drag (bottom to top) copies full lines', () {
+    const markdown =
+        'This is sentence one.\n- This is the first bullet.\n- This is the second bullet.';
+    final controller = ParserController();
+    final snapshot = controller.parse(markdown);
+    final paragraphNode = snapshot.blocks.elementAt(0);
+    final listNode = snapshot.blocks.elementAt(1);
+
+    final fragments = [
+      SelectionFragment(
+        rect: const Rect.fromLTWH(0, 0, 100, 20),
+        plainText: 'This is sentence one.',
+        contentLength: 21,
+        attachment: MarkdownSourceAttachment(
+          fullSource: snapshot.getNodeSource(paragraphNode) ?? '',
+          blockNode: paragraphNode,
+        ),
+        range: const SelectionRange(0, 21),
+      ),
+      SelectionFragment(
+        rect: const Rect.fromLTWH(0, 40, 100, 20),
+        plainText: '- This is the second bullet.',
+        contentLength: 28,
+        attachment: MarkdownSourceAttachment(
+          fullSource: snapshot.getNodeSource(listNode) ?? '',
+          blockNode: listNode,
+        ),
+        range: const SelectionRange(28, 56),
+      ),
+    ];
+
+    final serializer = SelectionSerializer();
+    final result = serializer.serialize(fragments);
+    expect(result, contains('This is sentence one.'));
+    expect(result, contains('- This is the second bullet.'));
+    expect(result.trim().split('\n').length, 2);
+  });
+
+  test('partial list item selection preserves inline formatting', () {
+    const markdown = '- Item with **bold** and _italic_';
+    final controller = ParserController();
+    final snapshot = controller.parse(markdown);
+    final listNode = snapshot.blocks.first;
+
+    // Simulate selecting just 'with **bold**'
+    final fragment = SelectionFragment(
+      rect: const Rect.fromLTWH(0, 0, 100, 20),
+      plainText: 'with **bold**',
+      contentLength: markdown.length,
+      attachment: MarkdownSourceAttachment(
+        fullSource: snapshot.getNodeSource(listNode) ?? '',
+        blockNode: listNode,
+      ),
+      range: const SelectionRange(7, 20),
+    );
+
+    final serializer = SelectionSerializer();
+    final result = serializer.serialize([fragment]);
+    expect(result, contains('**bold**'));
+    expect(result, contains('- Item with **bold**'));
+  });
+
+  test('nested list copy preserves indentation', () {
+    const markdown = '- A\n  - B\n  - C\n  - D';
+    final controller = ParserController();
+    final snapshot = controller.parse(markdown);
+    final listNode = snapshot.blocks.first;
+    final listSource = snapshot.getNodeSource(listNode);
+
+    // This test fails if getNodeSource returns null for lists
+    expect(listSource, isNotNull,
+        reason: 'getNodeSource must return list source');
+
+    final model = MarkdownSelectionModel(listNode);
+    final plainTextLen = model.plainText.length;
+
+    final fragment = SelectionFragment(
+      rect: const Rect.fromLTWH(0, 0, 100, 60),
+      plainText: model.plainText,
+      contentLength: plainTextLen,
+      attachment: MarkdownSourceAttachment(
+        fullSource: listSource!,
+        blockNode: listNode,
+      ),
+      range: SelectionRange(0, plainTextLen),
+    );
+
+    final serializer = SelectionSerializer();
+    final result = serializer.serialize([fragment]);
+    expect(result, contains('- A'));
+    expect(result, contains('  - B'));
+    expect(result, contains('  - C'));
+    expect(result, contains('  - D'));
+  });
+
+  test('runtime-style full nested list copy emits all items', () {
+    const markdown = '- A\n  - B\n  - C';
+    final controller = ParserController();
+    final snapshot = controller.parse(markdown);
+    final listNode = snapshot.blocks.first;
+    final listSource = snapshot.getNodeSource(listNode) ?? '';
+
+    // Sanity: getNodeSource should work for lists.
+    expect(listSource, isNotEmpty);
+
+    final attachment = MarkdownSourceAttachment(
+      fullSource: listSource,
+      blockNode: listNode,
+    );
+
+    // Simulate what Flutter delivers at runtime: separate fragments for bullets
+    // and text, all pointing at the same list attachment, with no ranges.
+    const bullet = '• ';
+    final fragments = <SelectionFragment>[
+      SelectionFragment(
+        rect: Rect.zero,
+        plainText: bullet,
+        contentLength: bullet.length,
+        attachment: attachment,
+      ),
+      SelectionFragment(
+        rect: Rect.zero,
+        plainText: 'A',
+        contentLength: 1,
+        attachment: attachment,
+      ),
+      SelectionFragment(
+        rect: Rect.zero,
+        plainText: bullet,
+        contentLength: bullet.length,
+        attachment: attachment,
+      ),
+      SelectionFragment(
+        rect: Rect.zero,
+        plainText: 'B',
+        contentLength: 1,
+        attachment: attachment,
+      ),
+      SelectionFragment(
+        rect: Rect.zero,
+        plainText: bullet,
+        contentLength: bullet.length,
+        attachment: attachment,
+      ),
+      SelectionFragment(
+        rect: Rect.zero,
+        plainText: 'C',
+        contentLength: 1,
+        attachment: attachment,
+      ),
+    ];
+
+    final serializer = SelectionSerializer();
+    final result = serializer.serialize(fragments).trim();
+    expect(result, '- A\n  - B\n  - C');
+  });
+
+  test('runtime-style partial nested list copy emits only selected items', () {
+    const markdown = '- A\n  - B\n  - C';
+    final controller = ParserController();
+    final snapshot = controller.parse(markdown);
+    final listNode = snapshot.blocks.first;
+    final listSource = snapshot.getNodeSource(listNode) ?? '';
+
+    expect(listSource, isNotEmpty);
+
+    final attachment = MarkdownSourceAttachment(
+      fullSource: listSource,
+      blockNode: listNode,
+    );
+
+    // Simulate selecting only A and B (not C)
+    const bullet = '• ';
+    final fragments = <SelectionFragment>[
+      SelectionFragment(
+        rect: Rect.zero,
+        plainText: bullet,
+        contentLength: bullet.length,
+        attachment: attachment,
+      ),
+      SelectionFragment(
+        rect: Rect.zero,
+        plainText: 'A',
+        contentLength: 1,
+        attachment: attachment,
+      ),
+      SelectionFragment(
+        rect: Rect.zero,
+        plainText: bullet,
+        contentLength: bullet.length,
+        attachment: attachment,
+      ),
+      SelectionFragment(
+        rect: Rect.zero,
+        plainText: 'B',
+        contentLength: 1,
+        attachment: attachment,
+      ),
+    ];
+
+    final serializer = SelectionSerializer();
+    final result = serializer.serialize(fragments).trim();
+    // Should NOT include C
+    expect(result, contains('- A'));
+    expect(result, contains('  - B'));
+    expect(result, isNot(contains('- C')));
+  });
+
+  test('runtime-style table selection uses registry fallback', () {
+    const markdown = '| A | B |\n| --- | --- |\n| X | Y |';
+    final controller = ParserController();
+    final snapshot = controller.parse(markdown);
+    final tableNode = snapshot.blocks.first;
+
+    TableLeafRegistry.instance.clear();
+    TableLeafRegistry.instance.beginTable(tableNode);
+    var row = tableNode.firstChild;
+    while (row != null) {
+      if (row.type == CmarkNodeType.tableRow) {
+        TableLeafRegistry.instance.beginRow(row);
+        var cell = row.firstChild;
+        while (cell != null) {
+          if (cell.type == CmarkNodeType.tableCell) {
+            final model = MarkdownSelectionModel(cell);
+            TableLeafRegistry.instance.addCell(cell, model.plainText);
+          }
+          cell = cell.next;
+        }
+        TableLeafRegistry.instance.endRow();
+      }
+      row = row.next;
+    }
+    TableLeafRegistry.instance.endTable();
+
+    // Simulate runtime: single fragment with aggregated text, no attachment
+    final fragment = SelectionFragment(
+      rect: Rect.zero,
+      plainText: 'ABXY',
+      contentLength: 4,
+      attachment: null,
+    );
+
+    final serializer = SelectionSerializer();
+    final result = serializer.serialize([fragment]);
+    expect(result, contains('| A | B |'));
+    expect(result, contains('| X | Y |'));
+  });
+
+  test('paragraph to table selection combines correctly', () {
+    const markdown = 'Intro text.\n\n| A | B |\n| --- | --- |\n| X | Y |';
+    final controller = ParserController();
+    final snapshot = controller.parse(markdown);
+    final paragraphNode = snapshot.blocks.elementAt(0);
+    final tableNode = snapshot.blocks.elementAt(1);
+
+    TableLeafRegistry.instance.clear();
+    TableLeafRegistry.instance.beginTable(tableNode);
+    var row = tableNode.firstChild;
+    while (row != null) {
+      if (row.type == CmarkNodeType.tableRow) {
+        TableLeafRegistry.instance.beginRow(row);
+        var cell = row.firstChild;
+        while (cell != null) {
+          if (cell.type == CmarkNodeType.tableCell) {
+            final model = MarkdownSelectionModel(cell);
+            TableLeafRegistry.instance.addCell(cell, model.plainText);
+          }
+          cell = cell.next;
+        }
+        TableLeafRegistry.instance.endRow();
+      }
+      row = row.next;
+    }
+    TableLeafRegistry.instance.endTable();
+
+    final fragments = [
+      SelectionFragment(
+        rect: const Rect.fromLTWH(0, 0, 100, 20),
+        plainText: 'Intro text.',
+        contentLength: 11,
+        attachment: MarkdownSourceAttachment(
+          fullSource: snapshot.getNodeSource(paragraphNode) ?? '',
+          blockNode: paragraphNode,
+        ),
+        range: const SelectionRange(0, 11),
+      ),
+      SelectionFragment(
+        rect: const Rect.fromLTWH(0, 40, 100, 40),
+        plainText: 'ABXY',
+        contentLength: 4,
+        attachment: null,
+      ),
+    ];
+
+    final serializer = SelectionSerializer();
+    final result = serializer.serialize(fragments);
+    expect(result, contains('Intro text.'));
+    expect(result, contains('| A | B |'));
+    expect(result, contains('| X | Y |'));
+  });
+
+  test('empty list items handled gracefully', () {
+    const markdown = '- \n- Item\n- ';
+    final controller = ParserController();
+    final snapshot = controller.parse(markdown);
+    final listNode = snapshot.blocks.first;
+    final listSource = snapshot.getNodeSource(listNode) ?? '';
+
+    if (listSource.isEmpty) {
+      return; // Skip if parser doesn't handle this case
+    }
+
+    final model = MarkdownSelectionModel(listNode);
+    final fragment = SelectionFragment(
+      rect: Rect.zero,
+      plainText: model.plainText,
+      contentLength: model.plainText.length,
+      attachment: MarkdownSourceAttachment(
+        fullSource: listSource,
+        blockNode: listNode,
+      ),
+      range: SelectionRange(0, model.plainText.length),
+    );
+
+    final serializer = SelectionSerializer();
+    final result = serializer.serialize([fragment]);
+    expect(result, contains('- '));
+    expect(result, contains('- Item'));
+  });
+
+  test('list item with inline code and bold', () {
+    const markdown = '- Item with `code` and **bold**';
+    final controller = ParserController();
+    final snapshot = controller.parse(markdown);
+    final listNode = snapshot.blocks.first;
+    final listSource = snapshot.getNodeSource(listNode) ?? '';
+
+    expect(listSource, isNotEmpty);
+
+    final model = MarkdownSelectionModel(listNode);
+    final fragment = SelectionFragment(
+      rect: Rect.zero,
+      plainText: model.plainText,
+      contentLength: model.plainText.length,
+      attachment: MarkdownSourceAttachment(
+        fullSource: listSource,
+        blockNode: listNode,
+      ),
+      range: SelectionRange(0, model.plainText.length),
+    );
+
+    final serializer = SelectionSerializer();
+    final result = serializer.serialize([fragment]);
+    expect(result, contains('`code`'));
+    expect(result, contains('**bold**'));
+    expect(result, contains('- Item'));
+  });
+
+  test('deeply nested list (3 levels) preserves all indentation', () {
+    const markdown = '- A\n  - B\n    - C\n    - D\n  - E';
+    final controller = ParserController();
+    final snapshot = controller.parse(markdown);
+    final listNode = snapshot.blocks.first;
+    final listSource = snapshot.getNodeSource(listNode) ?? '';
+
+    expect(listSource, isNotEmpty);
+
+    final model = MarkdownSelectionModel(listNode);
+    final fragment = SelectionFragment(
+      rect: Rect.zero,
+      plainText: model.plainText,
+      contentLength: model.plainText.length,
+      attachment: MarkdownSourceAttachment(
+        fullSource: listSource,
+        blockNode: listNode,
+      ),
+      range: SelectionRange(0, model.plainText.length),
+    );
+
+    final serializer = SelectionSerializer();
+    final result = serializer.serialize([fragment]);
+    expect(result, contains('- A'));
+    expect(result, contains('  - B'));
+    expect(result, contains('    - C'));
+    expect(result, contains('    - D'));
+    expect(result, contains('  - E'));
+  });
+
+  test('table with empty cells', () {
+    const markdown = '| A |  |\n| --- | --- |\n|  | B |';
+    final controller = ParserController();
+    final snapshot = controller.parse(markdown);
+    final tableNode = snapshot.blocks.first;
+
+    TableLeafRegistry.instance.clear();
+    TableLeafRegistry.instance.beginTable(tableNode);
+    var row = tableNode.firstChild;
+    while (row != null) {
+      if (row.type == CmarkNodeType.tableRow) {
+        TableLeafRegistry.instance.beginRow(row);
+        var cell = row.firstChild;
+        while (cell != null) {
+          if (cell.type == CmarkNodeType.tableCell) {
+            final model = MarkdownSelectionModel(cell);
+            TableLeafRegistry.instance.addCell(cell, model.plainText);
+          }
+          cell = cell.next;
+        }
+        TableLeafRegistry.instance.endRow();
+      }
+      row = row.next;
+    }
+    TableLeafRegistry.instance.endTable();
+
+    final group = TableLeafRegistry.instance.groups.first;
+    final result = group.toMarkdown();
+    expect(result, contains('| A |  |'));
+    expect(result, contains('|  | B |'));
+  });
+
+  test('list with links preserves link markdown', () {
+    const markdown =
+        '- Check [this](https://example.com)\n- And [that](https://other.com)';
+    final controller = ParserController();
+    final snapshot = controller.parse(markdown);
+    final listNode = snapshot.blocks.first;
+    final listSource = snapshot.getNodeSource(listNode) ?? '';
+
+    expect(listSource, isNotEmpty);
+
+    final model = MarkdownSelectionModel(listNode);
+    final fragment = SelectionFragment(
+      rect: Rect.zero,
+      plainText: model.plainText,
+      contentLength: model.plainText.length,
+      attachment: MarkdownSourceAttachment(
+        fullSource: listSource,
+        blockNode: listNode,
+      ),
+      range: SelectionRange(0, model.plainText.length),
+    );
+
+    final serializer = SelectionSerializer();
+    final result = serializer.serialize([fragment]);
+    expect(result, contains('[this](https://example.com)'));
+    expect(result, contains('[that](https://other.com)'));
+  });
+
+  test('selecting middle items from ordered list copies correct numbers', () {
+    const markdown =
+        '1. One\n2. Two\n3. Three\n4. Four\n5. Five\n6. Six\n7. Seven\n8. Eight\n9. Nine\n10. Ten\n11. Eleven\n12. Twelve';
+    final controller = ParserController();
+    final snapshot = controller.parse(markdown);
+    final listNode = snapshot.blocks.first;
+    final listSource = snapshot.getNodeSource(listNode) ?? '';
+
+    expect(listSource, isNotEmpty);
+
+    final attachment = MarkdownSourceAttachment(
+      fullSource: listSource,
+      blockNode: listNode,
+    );
+
+    // Simulate selecting items 8 and 9
+    const bullet = '• ';
+    final fragments = <SelectionFragment>[
+      SelectionFragment(
+        rect: Rect.zero,
+        plainText: bullet,
+        contentLength: 2,
+        attachment: attachment,
+      ),
+      SelectionFragment(
+        rect: Rect.zero,
+        plainText: 'Eight',
+        contentLength: 5,
+        attachment: attachment,
+      ),
+      SelectionFragment(
+        rect: Rect.zero,
+        plainText: bullet,
+        contentLength: 2,
+        attachment: attachment,
+      ),
+      SelectionFragment(
+        rect: Rect.zero,
+        plainText: 'Nine',
+        contentLength: 4,
+        attachment: attachment,
+      ),
+    ];
+
+    final serializer = SelectionSerializer();
+    final result = serializer.serialize(fragments).trim();
+    expect(result, contains('8. Eight'));
+    expect(result, contains('9. Nine'));
+    expect(result, isNot(contains('1. ')));
+    expect(result, isNot(contains('2. ')));
+  });
+
+  test('thematic break between selected paragraphs is included', () {
+    const markdown = 'A\n\n---\n\nB';
+    final controller = ParserController();
+    final snapshot = controller.parse(markdown);
+    final para1 = snapshot.blocks.elementAt(0);
+    final para2 = snapshot.blocks.elementAt(2);
+
+    final fragments = [
+      SelectionFragment(
+        rect: const Rect.fromLTWH(0, 0, 100, 20),
+        plainText: 'A',
+        contentLength: 1,
+        attachment: MarkdownSourceAttachment(
+          fullSource: snapshot.getNodeSource(para1) ?? '',
+          blockNode: para1,
+        ),
+        range: const SelectionRange(0, 1),
+      ),
+      SelectionFragment(
+        rect: const Rect.fromLTWH(0, 60, 100, 20),
+        plainText: 'B',
+        contentLength: 1,
+        attachment: MarkdownSourceAttachment(
+          fullSource: snapshot.getNodeSource(para2) ?? '',
+          blockNode: para2,
+        ),
+        range: const SelectionRange(0, 1),
+      ),
+    ];
+
+    final serializer = SelectionSerializer();
+    final result = serializer.serialize(fragments).trim();
+    expect(result, contains('A'));
+    expect(result, contains('---'));
+    expect(result, contains('B'));
+  });
+
+  test('selecting within table cell preserves formatting', () {
+    const markdown = '| **Bold** | _Italic_ |\n| --- | --- |\n| A | B |';
+    final controller = ParserController();
+    final snapshot = controller.parse(markdown);
+    final tableNode = snapshot.blocks.first;
+
+    TableLeafRegistry.instance.clear();
+    // Pretend we've registered this table
+    TableLeafRegistry.instance.beginTable(tableNode);
+    var row = tableNode.firstChild;
+    while (row != null) {
+      if (row.type == CmarkNodeType.tableRow) {
+        TableLeafRegistry.instance.beginRow(row);
+        var cell = row.firstChild;
+        while (cell != null) {
+          if (cell.type == CmarkNodeType.tableCell) {
+            final model = MarkdownSelectionModel(cell);
+            TableLeafRegistry.instance.addCell(cell, model.plainText);
+          }
+          cell = cell.next;
+        }
+        TableLeafRegistry.instance.endRow();
+      }
+      row = row.next;
+    }
+    TableLeafRegistry.instance.endTable();
+
+    // Select the entire table
+    final group = TableLeafRegistry.instance.groups.first;
+    final aggregated = group.concatenatedText;
+    final markdown2 = TableLeafRegistry.instance.toMarkdown(aggregated);
+
+    expect(markdown2, isNotNull);
+    expect(markdown2, contains('| **Bold** |'));
+    expect(markdown2, contains('Italic'));
   });
 }

@@ -11,7 +11,7 @@ void main() {
     TableLeafRegistry.instance.clear();
   });
 
-  test('regression: partial list selection stays literal', () {
+  test('regression: partial list selection expands to full lines', () {
     const markdown = '- Bullet one with word A\n'
         '- Bullet two with word B\n'
         '- Bullet three with word C\n';
@@ -34,10 +34,12 @@ void main() {
 
     final serializer = SelectionSerializer();
     final result = serializer.serialize([fragment]);
-    expect(result.trim(), selectionText);
+    // Should expand to include full bullet lines
+    expect(result, contains('- Bullet one with word A'));
+    expect(result, contains('- Bullet two with word B'));
   });
 
-  test('regression: partial selection with large list fragment stays literal', () {
+  test('regression: partial selection with large list fragment expands to full lines', () {
     const markdown = '''- Alpha one
 - Beta two
 - Gamma three
@@ -48,21 +50,25 @@ void main() {
     final snapshot = controller.parse(markdown);
     final listNode = snapshot.blocks.first;
 
-    const selectionText = 'Gamma three\n- Delta four';
+    // Partial text starting mid-way through Gamma
+    const selectionText = 'mma three\n- Delta four';
+    final startOffset = markdown.indexOf(selectionText);
 
     final fragment = SelectionFragment(
       rect: Rect.zero,
       plainText: selectionText,
-      contentLength: selectionText.length,
+      contentLength: markdown.length,
       attachment: MarkdownSourceAttachment(
         fullSource: markdown,
         blockNode: listNode,
       ),
-      range: const SelectionRange(0, selectionText.length),
+      range: SelectionRange(startOffset, startOffset + selectionText.length),
     );
 
     final serializer = SelectionSerializer();
     final result = serializer.serialize([fragment]);
-    expect(result.trim(), selectionText);
+    // Should expand to include full bullet lines
+    expect(result, contains('- Gamma three'));
+    expect(result, contains('- Delta four'));
   });
 }

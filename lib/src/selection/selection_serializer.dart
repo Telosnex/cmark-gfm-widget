@@ -4,6 +4,7 @@ import 'package:cmark_gfm/cmark_gfm.dart';
 import 'package:flutter/rendering.dart';
 
 import '../flutter/debug_log.dart';
+import 'leaf_text_registry.dart';
 
 import '../widgets/source_markdown_registry.dart';
 
@@ -62,22 +63,27 @@ class SelectionSerializer {
       return '';
     }
 
+    // Pre-process: aggregate list fragments that belong to same node.
+    // Flutter often delivers list selections as many tiny fragments (bullet + text
+    // runs), so we collapse them into one fragment per list with a proper range.
+    final aggregated = _aggregateListFragments(fragments);
+
     final buffer = StringBuffer();
     MarkdownSourceAttachment? lastAttachmentUsed;
     Rect? lastRect;
 
-    final nodeIndex = _buildNodeIndex(fragments);
-    debugLog(() => 'SelectionSerializer: fragments=${fragments.length}, nodes=${nodeIndex.length}');
+    final nodeIndex = _buildNodeIndex(aggregated);
+    debugLog(() => 'SelectionSerializer: fragments=${aggregated.length}, nodes=${nodeIndex.length}');
     final fullySelectedListItems =
-        _findFullySelectedListItems(nodeIndex, fragments);
-    final tableRowGroups = _groupTableRows(nodeIndex, fragments);
+        _findFullySelectedListItems(nodeIndex, aggregated);
+    final tableRowGroups = _groupTableRows(nodeIndex, aggregated);
     debugLog(() => 'SelectionSerializer: full list items=${fullySelectedListItems.length}, table rows=${tableRowGroups.length}');
 
     final emittedListItems = <CmarkNode>{};
     final emittedTableRows = <CmarkNode>{};
 
-    for (var i = 0; i < fragments.length; i++) {
-      final fragment = fragments[i];
+    for (var i = 0; i < aggregated.length; i++) {
+      final fragment = aggregated[i];
       final attachment = fragment.attachment;
       final node = attachment?.blockNode;
 
@@ -142,12 +148,36 @@ class SelectionSerializer {
         }
       }
 
+      _insertIntermediateBlocks(buffer, lastAttachmentUsed, attachment);
+
       buffer.write(textToWrite);
       lastAttachmentUsed = attachment;
       lastRect = fragment.rect;
     }
 
     return buffer.toString();
+  }
+
+  /// Emits markdown for blocks that sit between two selected siblings even if
+  /// Flutter never produced a fragment for them (for example thematic breaks).
+  void _insertIntermediateBlocks(
+    StringBuffer buffer,
+    MarkdownSourceAttachment? previous,
+    MarkdownSourceAttachment? current,
+  ) {
+    if (previous == null || current == null) return;
+    final prevNode = previous.blockNode;
+    final currNode = current.blockNode;
+    if (prevNode == null || currNode == null) return;
+    if (prevNode.parent != currNode.parent) return;
+
+    var sibling = prevNode.next;
+    while (sibling != null && !identical(sibling, currNode)) {
+      if (sibling.type == CmarkNodeType.thematicBreak) {
+        buffer.writeln('---');
+      }
+      sibling = sibling.next;
+    }
   }
 
   Map<CmarkNode, List<int>> _buildNodeIndex(List<SelectionFragment> fragments) {
@@ -440,6 +470,12 @@ class SelectionSerializer {
     final attachment = fragment.attachment;
     final range = fragment.range;
     if (attachment == null || range == null) {
+      // Try table registry fallback
+      final tableMarkdown = TableLeafRegistry.instance.toMarkdown(fragment.plainText);
+      if (tableMarkdown != null) {
+        debugLog(() => 'Using table registry fallback for fragment');
+        return tableMarkdown;
+      }
       return fragment.plainText;
     }
 
@@ -449,7 +485,7 @@ class SelectionSerializer {
       final normalizedPlainText = fragment.plainText.trim();
       final bool fullSourceMatches = normalizedSource == normalizedPlainText;
       if (!fullSourceMatches) {
-        return fragment.plainText;
+        return _expandListFragmentToLines(fragment, attachment);
       }
     }
 
@@ -496,5 +532,140 @@ class SelectionSerializer {
       }
       child = child.next;
     }
+  }
+
+  /// Collapses Flutter's per-run list fragments into a single fragment per
+  /// list attachment so we can compute the correct selection range before
+  /// serialization.
+  List<SelectionFragment> _aggregateListFragments(List<SelectionFragment> fragments) {
+    // Group fragments by their attachment
+    final groups = <MarkdownSourceAttachment?, List<SelectionFragment>>{};
+    for (final fragment in fragments) {
+      groups.putIfAbsent(fragment.attachment, () => []).add(fragment);
+    }
+
+    final aggregated = <SelectionFragment>[];
+    for (final entry in groups.entries) {
+      final attachment = entry.key;
+      final group = entry.value;
+
+      // Only aggregate if it's a list with multiple fragments and no ranges
+      if (attachment != null &&
+          attachment.blockNode?.type == CmarkNodeType.list &&
+          group.length > 1 &&
+          group.every((f) => f.range == null)) {
+        final allText = group.map((f) => f.plainText).join();
+        final model = attachment.selectionModel;
+        final modelText = model?.plainText ?? '';
+        final normalizedFragments = allText.replaceAll('• ', '').replaceAll('\n', '');
+        final normalizedModel = modelText.replaceAll('\n', '');
+
+        debugLog(() =>
+            '📦 Aggregating ${group.length} list fragments: '
+            'text="$normalizedFragments" model="$normalizedModel" '
+            'match=${normalizedFragments == normalizedModel}');
+
+        if (normalizedFragments == normalizedModel) {
+          // Full list selection
+          aggregated.add(SelectionFragment(
+            rect: group.first.rect,
+            plainText: allText,
+            contentLength: modelText.length,
+            attachment: attachment,
+            range: SelectionRange(0, modelText.length),
+          ));
+        } else {
+          // Partial list - find WHERE in the actual plainText (with newlines).
+          // We can't use normalized offsets because newlines shift positions.
+          // Instead, search for the first and last actual text fragments (skip bullets)
+          // in the model's plainText to compute the true range.
+          final textFragments = group
+              .where((f) => f.plainText.trim().isNotEmpty && !f.plainText.startsWith('•'))
+              .toList();
+          
+          if (textFragments.isEmpty) {
+            aggregated.addAll(group);
+          } else {
+            final firstText = textFragments.first.plainText;
+            final lastText = textFragments.last.plainText;
+            
+            final startOffset = modelText.indexOf(firstText);
+            if (startOffset == -1) {
+              aggregated.addAll(group);
+            } else {
+              var endOffset = modelText.indexOf(lastText, startOffset);
+              if (endOffset != -1) {
+                endOffset += lastText.length;
+              } else {
+                endOffset = startOffset + firstText.length;
+              }
+              
+              aggregated.add(SelectionFragment(
+                rect: group.first.rect,
+                plainText: allText,
+                contentLength: modelText.length,
+                attachment: attachment,
+                range: SelectionRange(startOffset, endOffset),
+              ));
+            }
+          }
+        }
+      } else {
+        // Not a multi-fragment list - keep as-is
+        aggregated.addAll(group);
+      }
+    }
+
+    return aggregated;
+  }
+
+  String _expandListFragmentToLines(
+    SelectionFragment fragment,
+    MarkdownSourceAttachment attachment,
+  ) {
+    final model = attachment.selectionModel;
+    final range = fragment.range;
+    
+    debugLog(() =>
+        '_expandListFragmentToLines: model=${model != null} range=$range '
+        'fragmentPlainText="${fragment.plainText.replaceAll('\n', '\\n')}" '
+        'modelPlainText="${model?.plainText.replaceAll('\n', '\\n')}"');
+    
+    if (model == null || range == null) {
+      debugLog(() => '  → returning plain text (no model/range)');
+      return fragment.plainText;
+    }
+
+    // Expand range to line boundaries in the model's plain text
+    final plainText = model.plainText;
+    var start = range.normalizedStart.clamp(0, plainText.length);
+    var end = range.normalizedEnd.clamp(0, plainText.length);
+    
+    // Expand start backward to line beginning
+    while (start > 0 && plainText[start - 1] != '\n') {
+      start--;
+    }
+    
+    // Expand end forward to line ending
+    while (end < plainText.length && plainText[end] != '\n') {
+      end++;
+    }
+    if (end < plainText.length && plainText[end] == '\n') {
+      end++; // Include the newline
+    }
+
+    debugLog(() => '  → expanded range ($start, $end)');
+    
+    // Use the model to serialize the expanded range
+    final markdown = model.toMarkdown(start, end);
+    debugLog(() =>
+        '  → model.toMarkdown($start, $end) = '
+        '"${markdown.replaceAll('\n', '\\n')}"');
+    if (markdown.isNotEmpty) {
+      return markdown;
+    }
+
+    debugLog(() => '  → markdown empty, returning plain text');
+    return fragment.plainText;
   }
 }

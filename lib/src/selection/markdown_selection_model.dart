@@ -101,6 +101,12 @@ class MarkdownSelectionModel {
         return buffer.toString();
       case CmarkNodeType.footnoteReference:
         return _substring(range, start, end);
+      case CmarkNodeType.thematicBreak:
+        return '---';
+      case CmarkNodeType.list:
+        return _emitList(node, start, end);
+      case CmarkNodeType.item:
+        return _emitListItem(node, start, end, 0);
       default:
         return _emitChildren(node, start, end);
     }
@@ -112,6 +118,102 @@ class MarkdownSelectionModel {
       return '';
     }
     return '$marker$inner$marker';
+  }
+
+  /// Emits markdown for an entire list node, walking all list items and
+  /// preserving nesting/indentation.
+  String _emitList(CmarkNode listNode, int start, int end) {
+    final buffer = StringBuffer();
+    var item = listNode.firstChild;
+    while (item != null) {
+      if (item.type == CmarkNodeType.item) {
+        final itemText = _emitListItem(item, start, end, 0);
+        if (itemText.isNotEmpty) {
+          if (buffer.isNotEmpty && !buffer.toString().endsWith('\n')) {
+            buffer.write('\n');
+          }
+          buffer.write(itemText);
+        }
+      }
+      item = item.next;
+    }
+    return buffer.toString();
+  }
+
+  /// Emits markdown for a single list item, including proper indentation,
+  /// bullet/number markers, and any nested lists it contains.
+  ///
+  /// For ordered lists, computes the actual item number by counting siblings.
+  String _emitListItem(CmarkNode itemNode, int start, int end, int depth) {
+    final range = _resolvedProjection.ranges[itemNode];
+    if (range == null || end <= range.start || start >= range.end) {
+      return '';
+    }
+
+    final parentList = itemNode.parent;
+    if (parentList == null || parentList.type != CmarkNodeType.list) {
+      return _emitChildren(itemNode, start, end);
+    }
+
+    final indent = '  ' * depth;
+    String marker;
+    if (parentList.listData.listType == CmarkListType.ordered) {
+      // Count which item this is in the parent list
+      var itemNumber = parentList.listData.start == 0 ? 1 : parentList.listData.start;
+      var sibling = parentList.firstChild;
+      while (sibling != null && !identical(sibling, itemNode)) {
+        if (sibling.type == CmarkNodeType.item) {
+          itemNumber++;
+        }
+        sibling = sibling.next;
+      }
+      marker = '$itemNumber. ';
+    } else {
+      marker = '- ';
+    }
+
+    final buffer = StringBuffer()
+      ..write(indent)
+      ..write(marker);
+
+    var child = itemNode.firstChild;
+    while (child != null) {
+      if (child.type == CmarkNodeType.list) {
+        // Nested list
+        final nestedText = _emitNestedList(child, start, end, depth + 1);
+        if (nestedText.isNotEmpty) {
+          buffer.write('\n');
+          buffer.write(nestedText);
+        }
+      } else {
+        buffer.write(_emitNode(child, start, end));
+      }
+      child = child.next;
+    }
+
+    return buffer.toString();
+  }
+
+  /// Emits markdown for a nested list (used by [_emitListItem] when a list item
+  /// contains a child list).
+  String _emitNestedList(CmarkNode listNode, int start, int end, int depth) {
+    final buffer = StringBuffer();
+    var item = listNode.firstChild;
+    var isFirst = true;
+    while (item != null) {
+      if (item.type == CmarkNodeType.item) {
+        final itemText = _emitListItem(item, start, end, depth);
+        if (itemText.isNotEmpty) {
+          if (!isFirst) {
+            buffer.write('\n');
+          }
+          buffer.write(itemText);
+          isFirst = false;
+        }
+      }
+      item = item.next;
+    }
+    return buffer.toString();
   }
 
   String _emitChildren(CmarkNode node, int start, int end) {
@@ -216,6 +318,13 @@ class _PlainTextBuilder {
       case CmarkNodeType.image:
         final alt = _collectInlineText(node);
         buffer.write(alt);
+        break;
+      case CmarkNodeType.item:
+        _visitChildren(node);
+        // Add newline after list item (unless it's the last item)
+        if (node.next != null && node.next!.type == CmarkNodeType.item) {
+          buffer.write('\n');
+        }
         break;
       default:
         _visitChildren(node);

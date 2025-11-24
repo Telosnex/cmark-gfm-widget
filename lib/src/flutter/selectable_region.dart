@@ -18,8 +18,11 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:vector_math/vector_math_64.dart';
 
+import 'package:cmark_gfm/cmark_gfm.dart';
+
 import '../widgets/source_markdown_registry.dart';
 import '../selection/leaf_text_registry.dart';
+import '../selection/selection_serializer.dart';
 // Examples can assume:
 // late GlobalKey key;
 
@@ -2796,33 +2799,18 @@ abstract class MultiSelectableSelectionContainerDelegate extends SelectionContai
     return SourceMarkdownRegistry.instance.findSourceForRenderObject(renderObject);
   }
 
-  String? _sourceIfFullySelected(Selectable selectable, SelectedContent content) {
-    final source = _findSourceMarkdown(selectable);
-    if (source == null) {
-      return null;
-    }
-
-    final normalizedSource = source.trim();
-    final normalizedSelection = content.plainText.trim();
-    if (normalizedSource != normalizedSelection) {
-      return null;
-    }
-
-    return source;
-  }
-
   /// Copies the selected contents of all [Selectable]s.
   @override
   SelectedContent? getSelectedContent() {
-    final List<(SelectedContent, Rect, String?)> selections =
-        <(SelectedContent, Rect, String?)>[
+    final List<(Selectable, SelectedContent, Rect)> selections =
+        <(Selectable, SelectedContent, Rect)>[
       for (final Selectable selectable in selectables)
         if (selectable.getSelectedContent() case final SelectedContent data)
           (
+            selectable,
             data,
             MatrixUtils.transformRect(
                 selectable.getTransformTo(null), _getBoundingBox(selectable)),
-            _sourceIfFullySelected(selectable, data),
           ),
     ];
     if (selections.isEmpty) {
@@ -2832,53 +2820,141 @@ abstract class MultiSelectableSelectionContainerDelegate extends SelectionContai
     // Sort selections by position (top to bottom, then left to right)
     selections.sort((a, b) {
       const yTolerance = 2.0; // Consider within 2px as same line
-      final yDiff = (a.$2.top - b.$2.top).abs();
+      final yDiff = (a.$3.top - b.$3.top).abs();
       
       if (yDiff > yTolerance) {
         // Different lines - sort by Y
-        return a.$2.top.compareTo(b.$2.top);
+        return a.$3.top.compareTo(b.$3.top);
       } else {
         // Same line (within tolerance) - sort by X (left to right)
-        return a.$2.left.compareTo(b.$2.left);
+        return a.$3.left.compareTo(b.$3.left);
       }
     });
     debugLog(() => '📐 Sorted selections by position (Y then X, tolerance=2px)');
     
-    final StringBuffer buffer = StringBuffer();
-    (SelectedContent, Rect, String?)? last;
-    String? lastSourceUsed;
-    for (final (SelectedContent, Rect, String?) selection in selections) {
-      debugLog(() =>
-          'SelectableRegion: fragment candidate plainTextLen=${selection.$1.plainText.length} '
-          'sourceLen=${selection.$3?.length ?? 0}');
-      // Deduplicate FIRST: skip if this is the same source as last block
-      if (selection.$3 != null && selection.$3 == lastSourceUsed) {
-        continue;
-      }
+    // Build SelectionFragments for the serializer.
+    // ARCHITECTURE: We used to build a string buffer here and concatenate fragments
+    // directly. This broke markdown-aware copy because we had no way to preserve
+    // list bullets, nested indentation, or table pipes. Now we build proper
+    // SelectionFragment objects with AST attachments and hand them to SelectionSerializer,
+    // which knows how to reconstruct canonical markdown.
+    //
+    // First pass: get attachment for each selection
+    final rawFragments = <(SelectedContent, Rect, MarkdownSourceAttachment?)>[];
+    for (final (selectable, data, rect) in selections) {
+      final plainText = data.plainText;
+      final source = _findSourceMarkdown(selectable);
       
-      if (last != null) {
-        // Use top-to-top distance instead of top-to-bottom (bounding boxes can be unreliable)
-        final topDiff = selection.$2.top - last.$2.top;
-        final addNewline = topDiff > 5; // More than 5px vertical distance = new line
-        if (addNewline) {
-          buffer.writeln();
+      debugLog(() =>
+          'SelectableRegion: fragment candidate plainTextLen=${plainText.length} '
+          'sourceLen=${source?.length ?? 0}');
+      
+      MarkdownSourceAttachment? attachment;
+      if (source != null) {
+        RenderObject? renderObject;
+        if (selectable is RenderObject) {
+          renderObject = selectable as RenderObject;
+        } else {
+          try {
+            renderObject = (selectable as dynamic).paragraph as RenderObject?;
+          } catch (_) {
+            try {
+              renderObject = (selectable as dynamic).renderObject as RenderObject?;
+            } catch (_) {}
+          }
+        }
+        
+        if (renderObject != null) {
+          attachment = SourceMarkdownRegistry.instance.findAttachment(renderObject);
+          debugLog(() =>
+              '🔍 Looking up attachment for ${selectable.runtimeType} '
+              'renderObject=${renderObject.runtimeType}:${renderObject.hashCode} '
+              'found=${attachment != null}');
+        } else {
+          debugLog(() =>
+              '🔍 No renderObject found for ${selectable.runtimeType}');
         }
       }
       
-      // Use source markdown if available, otherwise fall back to rendered text
-      final plainText = selection.$1.plainText;
-      final tableMarkdown = TableLeafRegistry.instance.toMarkdown(plainText);
-      final rawTextOrSource = selection.$3 ?? plainText;
-      final textToWrite = tableMarkdown ?? rawTextOrSource;
-      debugLog(() =>
-          'SelectableRegion: fragment text="${plainText.replaceAll('\n', '\\n')}" '
-          'tableMarkdown=${tableMarkdown != null} ★');
-      buffer.write(textToWrite);
-      lastSourceUsed = selection.$3;
-      last = selection;
+      rawFragments.add((data, rect, attachment));
     }
-    debugLog(() => '📋 Final clipboard text length: ${buffer.length}');
-    return SelectedContent(plainText: buffer.toString());
+
+    // Second pass: group by attachment and aggregate.
+    // For lists with multiple fragments (Flutter often splits bullets and text into
+    // separate selectables), we aggregate them here so the serializer can compute
+    // the correct selection range in the list's plain-text space.
+    final fragmentGroups = <MarkdownSourceAttachment?, List<(SelectedContent, Rect)>>{};
+    for (final (data, rect, attachment) in rawFragments) {
+      fragmentGroups.putIfAbsent(attachment, () => []).add((data, rect));
+    }
+
+    // Build final fragments (one per block when possible)
+    final fragments = <SelectionFragment>[];
+    for (final entry in fragmentGroups.entries) {
+      final attachment = entry.key;
+      final group = entry.value;
+
+      if (attachment != null && attachment.blockNode?.type == CmarkNodeType.list && group.length > 1) {
+        // Multiple fragments for same list - aggregate them
+        final allText = group.map((e) => e.$1.plainText).join();
+        final model = attachment.selectionModel;
+        final modelText = model?.plainText ?? '';
+        final normalizedFragments = allText.replaceAll('• ', '').replaceAll('\n', '');
+        final normalizedModel = modelText.replaceAll('\n', '');
+        
+        debugLog(() =>
+            '📦 Aggregating ${group.length} list fragments: '
+            'text="$normalizedFragments" model="$normalizedModel" '
+            'match=${normalizedFragments == normalizedModel}');
+
+        if (normalizedFragments == normalizedModel) {
+          // Full list selection - emit as one fragment with full range
+          fragments.add(SelectionFragment(
+            rect: group.first.$2,
+            plainText: allText,
+            contentLength: modelText.length,
+            attachment: attachment,
+            range: SelectionRange(0, modelText.length),
+          ));
+          continue;
+        }
+      }
+
+      // Not aggregatable or not a multi-fragment list - emit individually
+      for (final (data, rect) in group) {
+        final plainText = data.plainText;
+        
+        // If no attachment but table registry has a match, use that
+        if (attachment == null) {
+          final tableMarkdown = TableLeafRegistry.instance.toMarkdown(plainText);
+          if (tableMarkdown != null) {
+            debugLog(() => '📦 Using TableLeafRegistry for fragment');
+            // Build synthetic fragment that serializer will recognize
+            fragments.add(SelectionFragment(
+              rect: rect,
+              plainText: tableMarkdown,
+              contentLength: plainText.length,
+              attachment: null,
+            ));
+            continue;
+          }
+        }
+        
+        fragments.add(SelectionFragment(
+          rect: rect,
+          plainText: plainText,
+          contentLength: plainText.length,
+          attachment: attachment,
+        ));
+      }
+    }
+    
+    // Use SelectionSerializer to handle all the smart copy logic
+    final serializer = SelectionSerializer();
+    final markdown = serializer.serialize(fragments);
+    
+    debugLog(() => '📋 Final clipboard text length: ${markdown.length}');
+    return SelectedContent(plainText: markdown);
   }
 
   /// The total length of the content under this [SelectionContainerDelegate].

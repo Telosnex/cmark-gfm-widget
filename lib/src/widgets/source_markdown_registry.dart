@@ -1,6 +1,7 @@
 import 'package:cmark_gfm/cmark_gfm.dart';
 import 'package:flutter/rendering.dart';
 
+import '../flutter/debug_log.dart';
 import '../selection/markdown_selection_model.dart';
 
 class MarkdownSourceAttachment {
@@ -38,6 +39,9 @@ class SourceMarkdownRegistry {
   /// Register source markdown for a RenderObject
   void register(RenderObject renderObject, MarkdownSourceAttachment attachment) {
     _registry[renderObject] = attachment;
+    debugLog(() =>
+        '📝 Registered ${renderObject.runtimeType} hash=${renderObject.hashCode} '
+        'nodeType=${attachment.blockNode?.type} sourceLen=${attachment.fullSource.length}');
   }
   
   /// Find source markdown by checking the RenderObject and its ancestors

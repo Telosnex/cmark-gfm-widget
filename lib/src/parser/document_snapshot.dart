@@ -122,7 +122,7 @@ class DocumentSnapshot {
         (node.type == CmarkNodeType.heading || node.type == CmarkNodeType.list)
             ? 1
             : node.startColumn;
-    final startOffset = lineColToOffset(node.startLine, startCol);
+    int? startOffset = lineColToOffset(node.startLine, startCol);
 
     // Column 0 means "start of line" - find end of previous line
     int? endOffsetRaw;
@@ -134,22 +134,48 @@ class DocumentSnapshot {
           endOffsetRaw = newlinePos;
         }
       }
-      endOffsetRaw = lineColToOffset(node.endLine, node.endColumn);
+    }
+    endOffsetRaw ??= lineColToOffset(node.endLine, node.endColumn);
+
+    // Fallback: if we have startOffset but endOffset failed (parser didn't populate
+    // endLine/endColumn), try to find the node's literal content in the source and
+    // use that to compute the end offset. This handles cases where our cmark-dart
+    // port doesn't track source positions as precisely as the C implementation.
+    int? startOffsetLocal = startOffset;
+    if (startOffsetLocal != null && endOffsetRaw == null) {
+      final literal = node.content.toString();
+      if (literal.isNotEmpty) {
+        final index = source.indexOf(literal, startOffsetLocal);
+        if (index != -1) {
+          startOffsetLocal = index;
+          endOffsetRaw = index + literal.length;
+          debugLog(() =>
+              '⚠️ getNodeSource matched literal for ${node.type} length=${literal.length} at index=$index');
+        } else {
+          endOffsetRaw = (startOffsetLocal + literal.length).clamp(0, source.length);
+          debugLog(() =>
+              '⚠️ getNodeSource fallback using literal length for ${node.type}');
+        }
+      }
     }
 
-    if (startOffset == null || endOffsetRaw == null) {
+    if (startOffsetLocal == null || endOffsetRaw == null) {
+      debugLog(() =>
+          '❌ getNodeSource failed for node ${node.type} start=${node.startLine}:${node.startColumn} end=${node.endLine}:${node.endColumn}');
       return null;
     }
 
     // Add 1 to endOffset - cmark's endColumn points to the position before the end
     final endOffset = endOffsetRaw + 1;
 
-    if (startOffset >= endOffset) {
+    if (startOffsetLocal >= endOffset) {
       return null;
     }
 
-    var extracted =
-        source.substring(startOffset, endOffset.clamp(0, source.length));
+    var extracted = source.substring(
+      startOffsetLocal,
+      endOffset.clamp(0, source.length),
+    );
 
     // Trim trailing whitespace - position logic will add newlines as needed
     extracted = extracted.trimRight();

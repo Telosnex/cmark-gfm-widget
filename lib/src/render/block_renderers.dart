@@ -1,15 +1,37 @@
+import 'dart:math' as math;
+
 import 'package:cmark_gfm/cmark_gfm.dart';
+import 'package:cmark_gfm_widget/src/selection/markdown_selectable_paragraph.dart';
 import 'package:cmark_gfm_widget/src/widgets/source_markdown_registry.dart';
 import 'package:flutter_math_fork/flutter_math.dart';
 import 'package:pixel_snap/material.dart';
 
+import '../flutter/debug_log.dart';
 import '../parser/document_snapshot.dart';
 import '../theme/cmark_theme.dart';
 import '../highlight/highlight_adapter.dart';
 import '../widgets/source_aware_widget.dart';
+import '../selection/leaf_text_registry.dart';
+import '../selection/markdown_selectable_list.dart';
 import 'inline_renderers.dart';
 import 'render_pipeline.dart';
-import '../selection/leaf_text_registry.dart';
+
+/// Controls whether to wrap paragraphs and lists in custom [SelectionContainer]s
+/// (MarkdownSelectableParagraph, MarkdownSelectableList).
+///
+/// Default is FALSE because custom selection containers break cross-boundary drags:
+/// - Dragging from a paragraph into a list captures partial text ("Th" instead of full bullet)
+/// - Bullet markers render in separate widgets outside the SelectionContainer
+/// - Visual highlight and clipboard content mismatch
+///
+/// With this disabled, we rely on Flutter's default selection and use
+/// [SelectionSerializer] to aggregate fragments and reconstruct markdown at copy time.
+///
+/// Can be enabled via: --dart-define=CMARK_USE_MARKDOWN_SELECTABLES=true
+const bool kUseMarkdownSelectables = bool.fromEnvironment(
+  'CMARK_USE_MARKDOWN_SELECTABLES',
+  defaultValue: false,
+);
 
 final HighlightAdapter _highlightAdapter = HighlightAdapter();
 
@@ -64,15 +86,43 @@ List<BlockRenderResult> renderDocumentBlocks(
     final id = metadata?.id ?? 'block-${results.length}';
     final sourceMarkdown = snapshot.getNodeSource(block);
 
-    // Wrap with source metadata if available (for intelligent copy/paste)
+    // Wrap with source metadata so the serializer can use AST attachments.
+    // This happens EVEN when custom selectables are disabled (kUseMarkdownSelectables=false)
+    // because SelectionSerializer needs the attachments to reconstruct markdown from
+    // Flutter's raw text fragments.
     if (context.selectable && sourceMarkdown != null) {
+      final attachment = MarkdownSourceAttachment(
+        fullSource: sourceMarkdown,
+        blockNode: block,
+      );
+      debugLog(() =>
+          '🔧 Creating SourceAwareWidget for ${block.type} block=$id '
+          'sourceLen=${sourceMarkdown.length} '
+          'preview="${sourceMarkdown.substring(0, math.min(50, sourceMarkdown.length)).replaceAll('\n', '\\n')}"');
       widget = SourceAwareWidget(
-        attachment: MarkdownSourceAttachment(
-          fullSource: sourceMarkdown,
-          blockNode: block,
-        ),
+        attachment: attachment,
         child: widget,
       );
+
+      // Optionally wrap with custom selectables for paragraphs/lists.
+      if (kUseMarkdownSelectables) {
+        switch (block.type) {
+          case CmarkNodeType.paragraph:
+            widget = MarkdownSelectableParagraph(
+              attachment: attachment,
+              child: widget,
+            );
+            break;
+          case CmarkNodeType.list:
+            widget = MarkdownSelectableList(
+              attachment: attachment,
+              child: widget,
+            );
+            break;
+          default:
+            break;
+        }
+      }
     }
 
     results.add(BlockRenderResult(

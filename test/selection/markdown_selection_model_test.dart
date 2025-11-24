@@ -128,6 +128,30 @@ void main() {
       final model = _modelFor('first line\nsecond line');
       expect(model.plainText, 'first line\nsecond line');
     });
+  
+    test('thematic break appears in partial selection', () {
+      const markdown = 'Text before\n\n---\n\nText after';
+      final controller = _parserController;
+      final snapshot = controller.parse(markdown);
+      // The thematic break is its own block between two paragraphs
+      final model = MarkdownSelectionModel(snapshot.root);
+      final result = model.toMarkdown(0, model.length);
+      expect(result, contains('---'));
+      expect(result, contains('Text before'));
+      expect(result, contains('Text after'));
+    });
+  
+    test('ordered list items use correct numbering', () {
+      const markdown = '1. First\n2. Second\n3. Third';
+      final controller = _parserController;
+      final snapshot = controller.parse(markdown);
+      final listNode = snapshot.blocks.first;
+      final model = MarkdownSelectionModel(listNode);
+      final result = model.toMarkdown(0, model.length);
+      expect(result, contains('1. First'));
+      expect(result, contains('2. Second'));
+      expect(result, contains('3. Third'));
+    });
   });
 }
 

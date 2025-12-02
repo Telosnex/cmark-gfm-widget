@@ -136,15 +136,20 @@ Widget? _renderBlock(
   BlockRenderContext context, {
   int listLevel = 0,
 }) {
+  // Use listItemBlockSpacing when inside a list to avoid excessive padding
+  final effectiveBlockSpacing = listLevel > 0
+      ? context.theme.listItemBlockSpacing
+      : context.theme.blockSpacing;
   final theme = context.theme;
   switch (node.type) {
     case CmarkNodeType.paragraph:
-      return _buildTextualBlock(node, context, style: theme.paragraphTextStyle);
+      return _buildTextualBlock(node, context, style: theme.paragraphTextStyle, blockSpacing: effectiveBlockSpacing);
     case CmarkNodeType.heading:
       return _buildTextualBlock(
         node,
         context,
         style: theme.headingTextStyle(node.headingData.level),
+        blockSpacing: effectiveBlockSpacing,
       );
     case CmarkNodeType.blockQuote:
       return _buildBlockQuote(node, context, listLevel: listLevel);
@@ -208,6 +213,7 @@ Widget? _renderBlock(
         context,
         style: theme.paragraphTextStyle,
         literal: node.content.toString(),
+        blockSpacing: effectiveBlockSpacing,
       );
     case CmarkNodeType.footnoteDefinition:
       return _buildFootnoteDefinition(node, context, listLevel: listLevel);
@@ -219,6 +225,7 @@ Widget? _renderBlock(
         context,
         style: theme.paragraphTextStyle,
         literal: node.customData.onEnter,
+        blockSpacing: effectiveBlockSpacing,
       );
     default:
       return _renderCompositeBlock(node, context, listLevel: listLevel);
@@ -253,7 +260,9 @@ Widget _buildTextualBlock(
   BlockRenderContext context, {
   required TextStyle style,
   String? literal,
+  EdgeInsets? blockSpacing,
 }) {
+  final effectiveSpacing = blockSpacing ?? context.theme.blockSpacing;
   TextSpan textSpan;
   if (literal != null) {
     textSpan = TextSpan(text: literal, style: style);
@@ -284,7 +293,7 @@ Widget _buildTextualBlock(
     textScaler: TextScaler.linear(context.textScaleFactor),
   );
 
-  return _wrapWithSpacing(widget, context.theme.blockSpacing);
+  return _wrapWithSpacing(widget, effectiveSpacing);
 }
 
 Widget _buildBlockQuote(

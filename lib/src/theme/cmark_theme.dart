@@ -72,6 +72,7 @@ class CmarkThemeData {
     required this.orderedListIndent,
     required this.unorderedListIndent,
     required this.listItemSpacing,
+    this.listItemBlockSpacing = EdgeInsets.zero,
     required this.orderedListBulletTextStyle,
     required this.unorderedListBulletTextStyle,
     required this.tableHeaderTextStyle,
@@ -116,6 +117,7 @@ class CmarkThemeData {
   /// The provided [level] is 1-based, where the outermost list has level 1.
   final double Function(int level) unorderedListIndent;
   final double listItemSpacing;
+  final EdgeInsets listItemBlockSpacing;
   final TextStyle orderedListBulletTextStyle;
   final TextStyle unorderedListBulletTextStyle;
   final TextStyle tableHeaderTextStyle;
@@ -153,6 +155,7 @@ class CmarkThemeData {
     double Function(int level)? orderedListIndent,
     double Function(int level)? unorderedListIndent,
     double? listItemSpacing,
+    EdgeInsets? listItemBlockSpacing,
     TextStyle? orderedListBulletTextStyle,
     TextStyle? unorderedListBulletTextStyle,
     TextStyle? tableHeaderTextStyle,
@@ -192,6 +195,7 @@ class CmarkThemeData {
       orderedListIndent: orderedListIndent ?? this.orderedListIndent,
       unorderedListIndent: unorderedListIndent ?? this.unorderedListIndent,
       listItemSpacing: listItemSpacing ?? this.listItemSpacing,
+      listItemBlockSpacing: listItemBlockSpacing ?? this.listItemBlockSpacing,
       orderedListBulletTextStyle:
           orderedListBulletTextStyle ?? this.orderedListBulletTextStyle,
       unorderedListBulletTextStyle:

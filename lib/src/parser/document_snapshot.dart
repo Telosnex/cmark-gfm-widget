@@ -59,6 +59,7 @@ class DocumentSnapshot {
     if (sourceMarkdown != null) {
       for (final block in snapshot.blocks) {
         final source = snapshot._extractNodeSource(block);
+        debugLog(() => '📦 Caching source for ${block.type}: ${source != null ? '${source.length} chars' : 'NULL'}');
         if (source != null) {
           snapshot._sourceCache[block] = source;
         }
@@ -222,6 +223,17 @@ class DocumentSnapshot {
         if (!extracted.trimRight().endsWith(closer)) {
           extracted = '$extracted\n$closer';
         }
+      }
+    }
+    
+    // Special case: code_block nodes don't include closing fence, add it back
+    if (node.type == CmarkNodeType.codeBlock) {
+      final trimmed = extracted.trimRight();
+      // Check if it starts with a fence but doesn't end with one
+      if ((extracted.startsWith('```') || extracted.startsWith('~~~')) &&
+          !trimmed.endsWith('```') && !trimmed.endsWith('~~~')) {
+        final fence = extracted.startsWith('```') ? '```' : '~~~';
+        extracted = '$extracted\n$fence';
       }
     }
 

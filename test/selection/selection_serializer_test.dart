@@ -1154,6 +1154,96 @@ void main() {
     expect(result, '1. **Item two**\nSub text two.\n2. **Item three**\nSub text three.');
   });
 
+  test('code block full selection includes fences', () {
+    const markdown = '```dart\nprint("hello");\n```';
+    final controller = ParserController();
+    final snapshot = controller.parse(markdown);
+    final block = snapshot.blocks.first;
+    final source = snapshot.getNodeSource(block)!;
+    final model = MarkdownSelectionModel(block);
+    
+    // Full selection - plainText matches model
+    final fragment = SelectionFragment(
+      rect: const Rect.fromLTWH(0, 0, 100, 40),
+      plainText: model.plainText,  // "print(\"hello\");\n"
+      contentLength: model.length,
+      attachment: MarkdownSourceAttachment(
+        fullSource: source,
+        blockNode: block,
+      ),
+    );
+    
+    final serializer = SelectionSerializer();
+    final result = serializer.serialize([fragment]).trim();
+    
+    // Should include fences
+    expect(result, '```dart\nprint("hello");\n```');
+  });
+
+  test('code block partial selection excludes fences', () {
+    const markdown = '```dart\nline1\nline2\nline3\n```';
+    final controller = ParserController();
+    final snapshot = controller.parse(markdown);
+    final block = snapshot.blocks.first;
+    final source = snapshot.getNodeSource(block)!;
+    
+    // Partial selection - just "line2"
+    final fragment = SelectionFragment(
+      rect: const Rect.fromLTWH(0, 0, 100, 20),
+      plainText: 'line2',
+      contentLength: 5,
+      attachment: MarkdownSourceAttachment(
+        fullSource: source,
+        blockNode: block,
+      ),
+    );
+    
+    final serializer = SelectionSerializer();
+    final result = serializer.serialize([fragment]).trim();
+    
+    // Should NOT include fences - just the selected text
+    expect(result, 'line2');
+  });
+
+  test('code blocks preserve fences and separate from adjacent content', () {
+    const input = 'Some text:\n\n### Header\n\n**1. Some label:**\n```dart\nSome code\n```\n\n**2. Another label:**\n```dart\nEven more code\n```\n\nSome more text:\n- An item\n- Another item';
+    final controller = ParserController();
+    final snapshot = controller.parse(input);
+    
+    // Build fragments for ALL blocks
+    final fragments = <SelectionFragment>[];
+    var y = 0.0;
+    for (final block in snapshot.blocks) {
+      final source = snapshot.getNodeSource(block) ?? '';
+      final model = MarkdownSelectionModel(block);
+      fragments.add(SelectionFragment(
+        rect: Rect.fromLTWH(0, y, 100, 20),
+        plainText: model.plainText,
+        contentLength: model.length,
+        attachment: MarkdownSourceAttachment(
+          fullSource: source,
+          blockNode: block,
+        ),
+        range: SelectionRange(0, model.length),
+      ));
+      y += 40;
+    }
+
+    final serializer = SelectionSerializer();
+    final result = serializer.serialize(fragments).trim();
+    
+    // Code blocks should have fences
+    expect(result, contains('```dart'));
+    expect(result, contains('```'));
+    // Content should be properly separated
+    expect(result, contains('Some code'));
+    expect(result, contains('Even more code'));
+    // Bold labels should not be concatenated with code
+    expect(result, isNot(contains('code**2')));
+    expect(result, contains('**1. Some label:**'));
+    expect(result, contains('**2. Another label:**'));
+  });
+
   test('selecting within table cell preserves formatting', () {
     const markdown = '| **Bold** | _Italic_ |\n| --- | --- |\n| A | B |';
     final controller = ParserController();

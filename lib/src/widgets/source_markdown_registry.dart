@@ -63,7 +63,13 @@ class SourceMarkdownRegistry {
   }
 
   String? findSourceForRenderObject(RenderObject renderObject) {
-    return findAttachment(renderObject)?.fullSource;
+    final attachment = findAttachment(renderObject);
+    if (attachment == null) {
+      debugLog(() => '🔍 findSourceForRenderObject: no attachment found');
+      return null;
+    }
+    debugLog(() => '🔍 findSourceForRenderObject: attachment found, sourceLen=${attachment.fullSource.length}');
+    return attachment.fullSource;
   }
   
   /// Clear isn't supported with Expando, but objects get GC'd naturally

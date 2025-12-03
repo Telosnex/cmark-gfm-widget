@@ -2788,11 +2788,22 @@ abstract class MultiSelectableSelectionContainerDelegate extends SelectionContai
       try {
         renderObject = (selectable as dynamic).paragraph as RenderObject?;
       } catch (e) {
-        // Could not get RenderObject via dynamic access
+        // Might be a SelectionContainer - try to get its context's renderObject
+        try {
+          // _SelectionContainerState has a context with a renderObject
+          final context = (selectable as dynamic).context;
+          if (context != null) {
+            renderObject = (context as BuildContext).findRenderObject();
+            debugLog(() => '🔍 _findSourceMarkdown: got renderObject from context for ${selectable.runtimeType}');
+          }
+        } catch (e2) {
+          debugLog(() => '⚠️ _findSourceMarkdown: dynamic access failed for ${selectable.runtimeType}: $e, $e2');
+        }
       }
     }
 
     if (renderObject == null) {
+      debugLog(() => '⚠️ _findSourceMarkdown: no renderObject for ${selectable.runtimeType}');
       return null;
     }
 
@@ -2860,7 +2871,15 @@ abstract class MultiSelectableSelectionContainerDelegate extends SelectionContai
           } catch (_) {
             try {
               renderObject = (selectable as dynamic).renderObject as RenderObject?;
-            } catch (_) {}
+            } catch (_) {
+              // Try context.findRenderObject() for SelectionContainer
+              try {
+                final context = (selectable as dynamic).context;
+                if (context != null) {
+                  renderObject = (context as BuildContext).findRenderObject();
+                }
+              } catch (_) {}
+            }
           }
         }
         

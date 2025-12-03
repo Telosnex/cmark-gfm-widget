@@ -309,6 +309,9 @@ class _PlainTextBuilder {
       case CmarkNodeType.math:
         buffer.write(node.mathData.literal);
         break;
+      case CmarkNodeType.codeBlock:
+        buffer.write(node.codeData.literal);
+        break;
       case CmarkNodeType.footnoteReference:
         final label = node.footnoteReferenceIndex;
         final text = '[${label == 0 ? node.content.toString() : label}]';

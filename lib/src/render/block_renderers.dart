@@ -276,15 +276,7 @@ Widget _buildTextualBlock(
   }
 
   // Add invisible \r to TextSpan for copy/paste line breaks
-  final effectiveSpan = context.selectable
-      ? TextSpan(
-          children: [
-            textSpan,
-            const TextSpan(
-                text: '\r', style: TextStyle(fontSize: 0, height: 0)),
-          ],
-        )
-      : textSpan;
+  final effectiveSpan = textSpan;
 
   // Use pixel_snap's Text.rich for both selectable and non-selectable
   // SelectableRegion (from SelectionArea) makes it selectable automatically

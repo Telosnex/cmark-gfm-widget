@@ -5,6 +5,9 @@ import 'stable_id_registry.dart';
 
 /// Immutable representation of a parsed Markdown document.
 class DocumentSnapshot {
+  /// Cached source strings for each block node, computed at snapshot creation
+  /// while positions are still valid.
+  final Map<CmarkNode, String> _sourceCache = {};
   DocumentSnapshot._({
     required this.root,
     required this.revision,
@@ -42,13 +45,27 @@ class DocumentSnapshot {
   }) {
     _assignMetadata(root, registry, revision);
     registry.prune(revision - 1);
-    return DocumentSnapshot._(
+    final snapshot = DocumentSnapshot._(
       root: root,
       revision: revision,
       sourceMarkdown: sourceMarkdown,
       lineOffsets:
           sourceMarkdown != null ? _computeLineOffsets(sourceMarkdown) : null,
     );
+    
+    // Cache source strings NOW while positions are still valid.
+    // This enables incremental parsing - future parses may invalidate positions,
+    // but each snapshot captures sources at the moment it was created.
+    if (sourceMarkdown != null) {
+      for (final block in snapshot.blocks) {
+        final source = snapshot._extractNodeSource(block);
+        if (source != null) {
+          snapshot._sourceCache[block] = source;
+        }
+      }
+    }
+    
+    return snapshot;
   }
 
   static void _assignMetadata(
@@ -111,7 +128,19 @@ class DocumentSnapshot {
   }
 
   /// Extract the original markdown source for a node.
+  /// Returns cached value if available (populated at snapshot creation).
   String? getNodeSource(CmarkNode node) {
+    // Return cached source if available
+    final cached = _sourceCache[node];
+    if (cached != null) return cached;
+    
+    // Fallback to computing (for nodes not in cache, e.g. inline nodes)
+    return _extractNodeSource(node);
+  }
+  
+  /// Internal method to extract source from line/column positions.
+  /// Called at snapshot creation to populate cache.
+  String? _extractNodeSource(CmarkNode node) {
     final source = sourceMarkdown;
     if (source == null) {
       return null;
@@ -150,18 +179,18 @@ class DocumentSnapshot {
           startOffsetLocal = index;
           endOffsetRaw = index + literal.length;
           debugLog(() =>
-              '⚠️ getNodeSource matched literal for ${node.type} length=${literal.length} at index=$index');
+              '⚠️ _extractNodeSource matched literal for ${node.type} length=${literal.length} at index=$index');
         } else {
           endOffsetRaw = (startOffsetLocal + literal.length).clamp(0, source.length);
           debugLog(() =>
-              '⚠️ getNodeSource fallback using literal length for ${node.type}');
+              '⚠️ _extractNodeSource fallback using literal length for ${node.type}');
         }
       }
     }
 
     if (startOffsetLocal == null || endOffsetRaw == null) {
       debugLog(() =>
-          '❌ getNodeSource failed for node ${node.type} start=${node.startLine}:${node.startColumn} end=${node.endLine}:${node.endColumn}');
+          '❌ _extractNodeSource failed for node ${node.type} start=${node.startLine}:${node.startColumn} end=${node.endLine}:${node.endColumn}');
       return null;
     }
 
@@ -197,7 +226,7 @@ class DocumentSnapshot {
     }
 
     debugLog(() =>
-        '✅ getNodeSource: lines ${node.startLine}:${node.startColumn} to ${node.endLine}:${node.endColumn} extracted ${extracted.length} chars: "${extracted.replaceAll('\n', '\\n')}"');
+        '✅ _extractNodeSource: lines ${node.startLine}:${node.startColumn} to ${node.endLine}:${node.endColumn} extracted ${extracted.length} chars: "${extracted.replaceAll('\n', '\\n')}"');
     return extracted;
   }
 }

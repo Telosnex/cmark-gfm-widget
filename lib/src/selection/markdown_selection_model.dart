@@ -103,6 +103,12 @@ class MarkdownSelectionModel {
         return _substring(range, start, end);
       case CmarkNodeType.thematicBreak:
         return '---';
+      case CmarkNodeType.heading:
+        final level = node.headingData.level;
+        final prefix = '#' * level;
+        final content = _emitChildren(node, start, end);
+        if (content.isEmpty) return '';
+        return '$prefix $content';
       case CmarkNodeType.list:
         return _emitList(node, start, end);
       case CmarkNodeType.item:

@@ -1024,6 +1024,38 @@ void main() {
     expect(result, isNot(contains('2. ')));
   });
 
+  test('full document with thematic breaks, heading, and list', () {
+    const input = '---\n\n## Header\n\n1. **Some list item**\n   Some text.\n\n---';
+    // Note: serializer uses single newlines between blocks, not blank lines
+    const expected = '---\n## Header\n1. **Some list item**\nSome text.\n---';
+    
+    final controller = ParserController();
+    final snapshot = controller.parse(input);
+    
+    // Build fragments for ALL blocks
+    final fragments = <SelectionFragment>[];
+    var y = 0.0;
+    for (final block in snapshot.blocks) {
+      final source = snapshot.getNodeSource(block) ?? '';
+      final model = MarkdownSelectionModel(block);
+      fragments.add(SelectionFragment(
+        rect: Rect.fromLTWH(0, y, 100, 20),
+        plainText: model.plainText,
+        contentLength: model.length,
+        attachment: MarkdownSourceAttachment(
+          fullSource: source,
+          blockNode: block,
+        ),
+        range: SelectionRange(0, model.length),
+      ));
+      y += 40;
+    }
+
+    final serializer = SelectionSerializer();
+    final result = serializer.serialize(fragments).trim();
+    expect(result, equals(expected));
+  });
+
   test('thematic break between selected paragraphs is included', () {
     const markdown = 'A\n\n---\n\nB';
     final controller = ParserController();
@@ -1059,6 +1091,67 @@ void main() {
     expect(result, contains('A'));
     expect(result, contains('---'));
     expect(result, contains('B'));
+  });
+
+  test('multi-item list does not duplicate when Flutter splits markers and content', () {
+    // This test reproduces the bug where a 2-item list gets output multiple times
+    // because Flutter delivers separate fragments for "1. ", content, "2. ", content
+    // and the marker-only fragments expand to the full list.
+    const markdown = '## Header A\n\n1. **Item one**\n   Sub text one.\n\n---\n\n## Header B\n\n1. **Item two**\n   Sub text two.\n2. **Item three**\n   Sub text three.\n\n---\n\n*Footer*';
+    final controller = ParserController();
+    final snapshot = controller.parse(markdown);
+    
+    // Find the second list (the one with 2 items)
+    final blocks = snapshot.blocks.toList();
+    // Structure: heading, list(1 item), thematic_break, heading, list(2 items), thematic_break, paragraph
+    final list2 = blocks.where((b) => b.type == CmarkNodeType.list).elementAt(1);
+    final list2Source = snapshot.getNodeSource(list2) ?? '';
+    expect(list2Source, contains('Item two'));
+    expect(list2Source, contains('Item three'));
+    
+    final attachment = MarkdownSourceAttachment(
+      fullSource: list2Source,
+      blockNode: list2,
+    );
+    
+    // Simulate what Flutter delivers: separate fragments for markers and content
+    // NO ranges specified - simulates runtime where ranges are computed by indexOf
+    final fragments = <SelectionFragment>[
+      // First item marker
+      SelectionFragment(
+        rect: const Rect.fromLTWH(0, 0, 20, 20),
+        plainText: '1. ',
+        contentLength: 3,
+        attachment: attachment,
+      ),
+      // First item content
+      SelectionFragment(
+        rect: const Rect.fromLTWH(20, 0, 100, 40),
+        plainText: 'Item two\nSub text two.',
+        contentLength: 22,
+        attachment: attachment,
+      ),
+      // Second item marker
+      SelectionFragment(
+        rect: const Rect.fromLTWH(0, 40, 20, 20),
+        plainText: '2. ',
+        contentLength: 3,
+        attachment: attachment,
+      ),
+      // Second item content
+      SelectionFragment(
+        rect: const Rect.fromLTWH(20, 40, 100, 40),
+        plainText: 'Item three\nSub text three.',
+        contentLength: 26,
+        attachment: attachment,
+      ),
+    ];
+    
+    final serializer = SelectionSerializer();
+    final result = serializer.serialize(fragments).trim();
+    
+    // Exact expected output - no duplicates, proper structure
+    expect(result, '1. **Item two**\nSub text two.\n2. **Item three**\nSub text three.');
   });
 
   test('selecting within table cell preserves formatting', () {

@@ -2940,11 +2940,34 @@ abstract class MultiSelectableSelectionContainerDelegate extends SelectionContai
           }
         }
         
+        // Compute range by finding where this fragment's text appears in the model
+        SelectionRange? range;
+        if (attachment != null) {
+          final model = attachment.selectionModel;
+          if (model != null) {
+            final modelText = model.plainText;
+            final trimmedPlain = plainText.trim();
+            if (trimmedPlain.isNotEmpty) {
+              final startIdx = modelText.indexOf(trimmedPlain);
+              if (startIdx >= 0) {
+                range = SelectionRange(startIdx, startIdx + trimmedPlain.length);
+              } else {
+                // Full range fallback
+                range = SelectionRange(0, model.length);
+              }
+            } else {
+              // Empty or whitespace-only - use full range
+              range = SelectionRange(0, model.length);
+            }
+          }
+        }
+        
         fragments.add(SelectionFragment(
           rect: rect,
           plainText: plainText,
           contentLength: plainText.length,
           attachment: attachment,
+          range: range,
         ));
       }
     }

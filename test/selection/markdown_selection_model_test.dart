@@ -129,6 +129,13 @@ void main() {
       expect(model.plainText, 'first line\nsecond line');
     });
   
+    test('heading preserves level markers', () {
+      final model = _modelFor('## Header');
+      final result = model.toMarkdown(0, model.length);
+      expect(result, contains('## '));
+      expect(result, contains('Header'));
+    });
+  
     test('thematic break appears in partial selection', () {
       const markdown = 'Text before\n\n---\n\nText after';
       final controller = _parserController;

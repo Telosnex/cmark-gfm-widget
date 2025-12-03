@@ -169,6 +169,8 @@ class SelectionSerializer {
     final prevNode = previous.blockNode;
     final currNode = current.blockNode;
     if (prevNode == null || currNode == null) return;
+    // Same node (e.g., multiple fragments from same list) - no intermediates
+    if (identical(prevNode, currNode)) return;
     if (prevNode.parent != currNode.parent) return;
 
     var sibling = prevNode.next;
@@ -468,8 +470,31 @@ class SelectionSerializer {
 
   String _serializeFragment(SelectionFragment fragment) {
     final attachment = fragment.attachment;
-    final range = fragment.range;
+    var range = fragment.range;
+    final CmarkNodeType? nodeType = attachment?.blockNode?.type;
+
+    // For list fragments without a range, compute one from plainText
+    if (attachment != null && range == null && nodeType == CmarkNodeType.list) {
+      final model = attachment.selectionModel;
+      if (model != null) {
+        final modelText = model.plainText;
+        final trimmedPlain = fragment.plainText.trim();
+        if (trimmedPlain.isNotEmpty && !_listMarkerOnlyPattern.hasMatch(fragment.plainText)) {
+          final startIdx = modelText.indexOf(trimmedPlain);
+          if (startIdx >= 0) {
+            range = SelectionRange(startIdx, startIdx + trimmedPlain.length);
+            debugLog(() => 'Computed range ($startIdx, ${startIdx + trimmedPlain.length}) for list fragment');
+          }
+        }
+      }
+    }
+
     if (attachment == null || range == null) {
+      // For list marker-only fragments, skip them
+      if (nodeType == CmarkNodeType.list && _listMarkerOnlyPattern.hasMatch(fragment.plainText)) {
+        debugLog(() => '_serializeFragment: skipping marker-only fragment "${fragment.plainText}"');
+        return '';
+      }
       // Try table registry fallback
       final tableMarkdown = TableLeafRegistry.instance.toMarkdown(fragment.plainText);
       if (tableMarkdown != null) {
@@ -479,13 +504,12 @@ class SelectionSerializer {
       return fragment.plainText;
     }
 
-    final CmarkNodeType? nodeType = attachment.blockNode?.type;
     if (nodeType == CmarkNodeType.list) {
       final normalizedSource = attachment.fullSource.trim();
       final normalizedPlainText = fragment.plainText.trim();
       final bool fullSourceMatches = normalizedSource == normalizedPlainText;
       if (!fullSourceMatches) {
-        return _expandListFragmentToLines(fragment, attachment);
+        return _expandListFragmentToLines(fragment, attachment, range);
       }
     }
 
@@ -619,12 +643,25 @@ class SelectionSerializer {
     return aggregated;
   }
 
+  /// Regex matching list markers like "1. ", "2. ", "- ", "* ", etc.
+  static final _listMarkerOnlyPattern = RegExp(r'^\s*(\d+\.|[-*+])\s*$');
+
   String _expandListFragmentToLines(
     SelectionFragment fragment,
     MarkdownSourceAttachment attachment,
+    SelectionRange? computedRange,
   ) {
+    // Skip list marker-only fragments (e.g., "1. ", "2. ", "- ")
+    // These don't appear in the model's plainText and would incorrectly
+    // expand to the full list. Content fragments will handle serialization.
+    if (_listMarkerOnlyPattern.hasMatch(fragment.plainText)) {
+      debugLog(() =>
+          '_expandListFragmentToLines: skipping marker-only fragment "${fragment.plainText}"');
+      return '';
+    }
+
     final model = attachment.selectionModel;
-    final range = fragment.range;
+    final range = computedRange ?? fragment.range;
     
     debugLog(() =>
         '_expandListFragmentToLines: model=${model != null} range=$range '

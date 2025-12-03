@@ -58,6 +58,7 @@ class BlockRenderContext {
     required this.selectable,
     required this.textScaleFactor,
     required this.renderFootnoteDefinitions,
+    this.leadingSpans = const [],
     required this.tableOptions,
     required this.codeBlockWrapper,
     this.mathBlockBuilder,
@@ -71,6 +72,9 @@ class BlockRenderContext {
   final TableRenderOptions tableOptions;
   final CodeBlockWrapperBuilder? codeBlockWrapper;
   final BlockMathWidgetBuilder? mathBlockBuilder;
+  
+  /// Optional leading spans to prepend to the first text block.
+  final List<InlineSpan> leadingSpans;
 }
 
 List<BlockRenderResult> renderDocumentBlocks(
@@ -78,9 +82,38 @@ List<BlockRenderResult> renderDocumentBlocks(
   BlockRenderContext context,
 ) {
   final results = <BlockRenderResult>[];
+  var remainingLeadingSpans = context.leadingSpans;
+  
   for (final block in snapshot.blocks) {
-    var widget = _renderBlock(block, context);
+    // Pass leading spans to first text block, then clear
+    final blockContext = remainingLeadingSpans.isNotEmpty
+        ? BlockRenderContext(
+            theme: context.theme,
+            inlineContext: context.inlineContext,
+            selectable: context.selectable,
+            textScaleFactor: context.textScaleFactor,
+            renderFootnoteDefinitions: context.renderFootnoteDefinitions,
+            leadingSpans: remainingLeadingSpans,
+            tableOptions: context.tableOptions,
+            codeBlockWrapper: context.codeBlockWrapper,
+            mathBlockBuilder: context.mathBlockBuilder,
+          )
+        : context;
+    
+    var widget = _renderBlock(block, blockContext);
     if (widget == null) continue;
+    
+    // Clear leading spans after first block that can contain text
+    if (remainingLeadingSpans.isNotEmpty) {
+      switch (block.type) {
+        case CmarkNodeType.paragraph:
+        case CmarkNodeType.heading:
+          remainingLeadingSpans = const [];
+          break;
+        default:
+          break;
+      }
+    }
 
     final metadata = DocumentSnapshot.metadataFor(block);
     final id = metadata?.id ?? 'block-${results.length}';
@@ -275,8 +308,10 @@ Widget _buildTextualBlock(
     }
   }
 
-  // Add invisible \r to TextSpan for copy/paste line breaks
-  final effectiveSpan = textSpan;
+  // Prepend leading spans if provided
+  final effectiveSpan = context.leadingSpans.isNotEmpty
+      ? TextSpan(children: [...context.leadingSpans, textSpan])
+      : textSpan;
 
   // Use pixel_snap's Text.rich for both selectable and non-selectable
   // SelectableRegion (from SelectionArea) makes it selectable automatically

@@ -18,6 +18,7 @@ class RenderOptions {
     this.tableOptions = const TableRenderOptions(),
     this.codeBlockWrapper,
     this.mathOptions = const MathRenderOptions(),
+    this.leadingSpans = const [],
   });
 
   final bool selectable;
@@ -27,6 +28,9 @@ class RenderOptions {
   final TableRenderOptions tableOptions;
   final CodeBlockWrapperBuilder? codeBlockWrapper;
   final MathRenderOptions mathOptions;
+  
+  /// Optional leading spans to prepend to the first text block.
+  final List<InlineSpan> leadingSpans;
 }
 
 class MathRenderOptions {
@@ -78,6 +82,7 @@ class RenderPipeline {
       selectable: options.selectable,
       textScaleFactor: options.textScaleFactor,
       renderFootnoteDefinitions: options.renderFootnoteDefinitions,
+      leadingSpans: options.leadingSpans,
       tableOptions: options.tableOptions,
       codeBlockWrapper: options.codeBlockWrapper,
       mathBlockBuilder: options.mathOptions.blockBuilder,

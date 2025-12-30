@@ -350,7 +350,16 @@ class _PlainTextBuilder {
         buffer.write(alt);
         break;
       case CmarkNodeType.item:
-        _visitChildren(node);
+        // Visit children, but add newline before nested lists
+        var child = node.firstChild;
+        while (child != null) {
+          if (child.type == CmarkNodeType.list && buffer.isNotEmpty) {
+            // Add newline before nested list to separate from parent content
+            buffer.write('\n');
+          }
+          visit(child);
+          child = child.next;
+        }
         // Add newline after list item (unless it's the last item)
         if (node.next != null && node.next!.type == CmarkNodeType.item) {
           buffer.write('\n');

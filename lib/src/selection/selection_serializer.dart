@@ -580,7 +580,8 @@ class SelectionSerializer {
   /// Collapses Flutter's per-run list fragments into a single fragment per
   /// list attachment so we can compute the correct selection range before
   /// serialization.
-  List<SelectionFragment> _aggregateListFragments(List<SelectionFragment> fragments) {
+  List<SelectionFragment> _aggregateListFragments(
+      List<SelectionFragment> fragments) {
     // Group fragments by their attachment
     final groups = <MarkdownSourceAttachment?, List<SelectionFragment>>{};
     for (final fragment in fragments) {
@@ -662,8 +663,9 @@ class SelectionSerializer {
     return aggregated;
   }
 
-  /// Regex matching list markers like "1. ", "2. ", "- ", "* ", etc.
-  static final _listMarkerOnlyPattern = RegExp(r'^\s*(\d+\.|[-*+])\s*$');
+  /// Regex matching list markers like "1. ", "2. ", "- ", "* ", "• ", etc.
+  /// Includes Unicode bullet (U+2022) which Flutter renders for unordered lists.
+  static final _listMarkerOnlyPattern = RegExp(r'^\s*(\d+\.|[-*+•])\s*$');
 
   String _expandListFragmentToLines(
     SelectionFragment fragment,
@@ -673,9 +675,14 @@ class SelectionSerializer {
     // Skip list marker-only fragments (e.g., "1. ", "2. ", "- ")
     // These don't appear in the model's plainText and would incorrectly
     // expand to the full list. Content fragments will handle serialization.
-    if (_listMarkerOnlyPattern.hasMatch(fragment.plainText)) {
+    final fragmentText = fragment.plainText;
+    final isMarkerOnly = _listMarkerOnlyPattern.hasMatch(fragmentText);
+    debugLog(() =>
+        '_expandListFragmentToLines: fragmentText="$fragmentText" codeUnits=${fragmentText.codeUnits} '
+        'isMarkerOnly=$isMarkerOnly');
+    if (isMarkerOnly) {
       debugLog(() =>
-          '_expandListFragmentToLines: skipping marker-only fragment "${fragment.plainText}"');
+          '_expandListFragmentToLines: skipping marker-only fragment "$fragmentText"');
       return '';
     }
 

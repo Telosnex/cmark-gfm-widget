@@ -1154,6 +1154,154 @@ void main() {
     expect(result, '1. **Item two**\nSub text two.\n2. **Item three**\nSub text three.');
   });
 
+  test('nested list item selection returns just that item (C)', () {
+    // Input:
+    // - A
+    //   - B
+    //   - C
+    //   - D
+    // Selecting just "C" should give "- C", not "- \n  - C"
+    const markdown = '- A\n  - B\n  - C\n  - D';
+    final controller = ParserController();
+    final snapshot = controller.parse(markdown);
+    final block = snapshot.blocks.first; // the list
+    final source = snapshot.getNodeSource(block)!;
+    
+    // Simulate selecting just "C"
+    final fragment = SelectionFragment(
+      rect: const Rect.fromLTWH(0, 40, 100, 20),
+      plainText: 'C',
+      contentLength: 1,
+      attachment: MarkdownSourceAttachment(
+        fullSource: source,
+        blockNode: block,
+      ),
+    );
+    
+    final serializer = SelectionSerializer();
+    final result = serializer.serialize([fragment]).trim();
+    
+    // Should be just the selected item, not parent structure with empty content
+    expect(result, '- C');
+  });
+
+  test('nested list selecting A and B does not duplicate', () {
+    // Input:
+    // - A
+    //   - B
+    //   - C
+    //   - D
+    // Selecting A and B should give:
+    // - A
+    //   - B
+    // NOT duplicated content
+    const markdown = '- A\n  - B\n  - C\n  - D';
+    final controller = ParserController();
+    final snapshot = controller.parse(markdown);
+    final block = snapshot.blocks.first;
+    final source = snapshot.getNodeSource(block)!;
+    final model = MarkdownSelectionModel(block);
+    
+    // plainText is "A\nB\nC\nD"
+    final plainText = model.plainText;
+    final aStart = 0;
+    final bEnd = plainText.indexOf('B') + 1;  // End after B
+    
+    // Simulate what Flutter might deliver: multiple fragments
+    // Fragment 1: bullet marker "• " (rendered bullet)
+    // Fragment 2: "A"
+    // Fragment 3: nested bullet "  • "
+    // Fragment 4: "B"
+    final fragments = <SelectionFragment>[
+      // Bullet marker for A
+      SelectionFragment(
+        rect: const Rect.fromLTWH(0, 0, 10, 20),
+        plainText: String.fromCharCodes([8226, 32]), // • + space from runtime
+        contentLength: 2,
+        attachment: MarkdownSourceAttachment(
+          fullSource: source,
+          blockNode: block,
+        ),
+      ),
+      // Text "A"
+      SelectionFragment(
+        rect: const Rect.fromLTWH(10, 0, 20, 20),
+        plainText: 'A',
+        contentLength: 1,
+        attachment: MarkdownSourceAttachment(
+          fullSource: source,
+          blockNode: block,
+        ),
+        range: SelectionRange(aStart, aStart + 1),
+      ),
+      // Nested bullet marker for B
+      SelectionFragment(
+        rect: const Rect.fromLTWH(0, 20, 20, 20),
+        plainText: '  ${String.fromCharCodes([8226])} ', // indent + • + space from runtime
+        contentLength: 4,
+        attachment: MarkdownSourceAttachment(
+          fullSource: source,
+          blockNode: block,
+        ),
+      ),
+      // Text "B"
+      SelectionFragment(
+        rect: const Rect.fromLTWH(20, 20, 20, 20),
+        plainText: 'B',
+        contentLength: 1,
+        attachment: MarkdownSourceAttachment(
+          fullSource: source,
+          blockNode: block,
+        ),
+        range: SelectionRange(plainText.indexOf('B'), bEnd),
+      ),
+    ];
+    
+    final serializer = SelectionSerializer();
+    final result = serializer.serialize(fragments).trim();
+    
+    // Should be properly structured, no duplicates
+    expect(result, '- A\n  - B');
+  });
+
+  test('nested list item selection returns just that item (B)', () {
+    // Input:
+    // - A
+    //   - B
+    //   - C
+    //   - D
+    // Selecting just "B" should give "- B", not "- A\n  - B"
+    const markdown = '- A\n  - B\n  - C\n  - D';
+    final controller = ParserController();
+    final snapshot = controller.parse(markdown);
+    final block = snapshot.blocks.first; // the list
+    final source = snapshot.getNodeSource(block)!;
+    final model = MarkdownSelectionModel(block);
+    
+    // Find where "B" is in the plainText ("A\nB\nC\nD")
+    final plainText = model.plainText;
+    final bStart = plainText.indexOf('B');
+    final bEnd = bStart + 1;
+    
+    // Simulate selecting just "B"
+    final fragment = SelectionFragment(
+      rect: const Rect.fromLTWH(0, 20, 100, 20),
+      plainText: 'B',
+      contentLength: 1,
+      attachment: MarkdownSourceAttachment(
+        fullSource: source,
+        blockNode: block,
+      ),
+      range: SelectionRange(bStart, bEnd),
+    );
+    
+    final serializer = SelectionSerializer();
+    final result = serializer.serialize([fragment]).trim();
+    
+    // Should be just "- B", not "- A\n  - B"
+    expect(result, '- B');
+  });
+
   test('code block full selection includes fences', () {
     const markdown = '```dart\nprint("hello");\n```';
     final controller = ParserController();

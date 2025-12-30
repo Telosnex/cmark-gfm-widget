@@ -178,23 +178,44 @@ class MarkdownSelectionModel {
       marker = '- ';
     }
 
-    final buffer = StringBuffer()
-      ..write(indent)
-      ..write(marker);
-
+    // First, collect what content this item has
+    final directContent = StringBuffer();
+    final nestedContent = StringBuffer();
+    
     var child = itemNode.firstChild;
     while (child != null) {
       if (child.type == CmarkNodeType.list) {
         // Nested list
         final nestedText = _emitNestedList(child, start, end, depth + 1);
         if (nestedText.isNotEmpty) {
-          buffer.write('\n');
-          buffer.write(nestedText);
+          nestedContent.write(nestedText);
         }
       } else {
-        buffer.write(_emitNode(child, start, end));
+        directContent.write(_emitNode(child, start, end));
       }
       child = child.next;
+    }
+    
+    // Only emit this item if it has direct content or nested content
+    if (directContent.isEmpty && nestedContent.isEmpty) {
+      return '';
+    }
+    
+    final buffer = StringBuffer();
+    
+    // Only include parent marker if this item has direct content
+    if (directContent.isNotEmpty) {
+      buffer.write(indent);
+      buffer.write(marker);
+      buffer.write(directContent);
+    }
+    
+    // Add nested content
+    if (nestedContent.isNotEmpty) {
+      if (buffer.isNotEmpty) {
+        buffer.write('\n');
+      }
+      buffer.write(nestedContent);
     }
 
     return buffer.toString();

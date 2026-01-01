@@ -1934,10 +1934,24 @@ class SelectableRegionState extends State<SelectableRegion>
         excludeFromSemantics: true,
         child: Actions(
           actions: _actions,
-          child: Focus.withExternalFocusNode(
-            includeSemantics: false,
-            focusNode: _focusNode,
-            child: result,
+          child: Shortcuts(
+            shortcuts: const <ShortcutActivator, Intent>{
+              // Ensure Cmd+C / Ctrl+C is handled locally when this region has focus
+              SingleActivator(LogicalKeyboardKey.keyC, meta: true):
+                  CopySelectionTextIntent.copy,
+              SingleActivator(LogicalKeyboardKey.keyC, control: true):
+                  CopySelectionTextIntent.copy,
+              // Select all
+              SingleActivator(LogicalKeyboardKey.keyA, meta: true):
+                  SelectAllTextIntent(SelectionChangedCause.keyboard),
+              SingleActivator(LogicalKeyboardKey.keyA, control: true):
+                  SelectAllTextIntent(SelectionChangedCause.keyboard),
+            },
+            child: Focus.withExternalFocusNode(
+              includeSemantics: false,
+              focusNode: _focusNode,
+              child: result,
+            ),
           ),
         ),
       ),

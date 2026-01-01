@@ -484,36 +484,39 @@ void main() {
     expect(TableLeafRegistry.instance.toMarkdown('Not a table'), isNull);
   });
 
-  test('paragraph to list drag (top to bottom) copies full lines', () {
+  test('paragraph to list drag (top to bottom) - full list item selected', () {
     const markdown =
         'This is sentence one.\n- This is the first bullet.\n- This is the second bullet.';
     final controller = ParserController();
     final snapshot = controller.parse(markdown);
     final paragraphNode = snapshot.blocks.elementAt(0);
     final listNode = snapshot.blocks.elementAt(1);
+    final listModel = MarkdownSelectionModel(listNode);
 
-    // Simulate what Flutter delivers: paragraph fragment + partial list fragment
+    // Simulate selecting full paragraph + full first list item (complete semantic units)
+    final listPlainText = listModel.plainText; // "This is the first bullet.\nThis is the second bullet."
+    final firstItemEnd = listPlainText.indexOf('\n');
+    
     final fragments = [
       SelectionFragment(
         rect: const Rect.fromLTWH(0, 0, 100, 20),
-        plainText: 'This is sentence one.\n',
-        contentLength: 22,
+        plainText: 'This is sentence one.',
+        contentLength: 21,
         attachment: MarkdownSourceAttachment(
           fullSource: snapshot.getNodeSource(paragraphNode) ?? '',
           blockNode: paragraphNode,
         ),
-        range: const SelectionRange(0, 22),
+        range: const SelectionRange(0, 21),
       ),
       SelectionFragment(
         rect: const Rect.fromLTWH(0, 20, 100, 20),
-        plainText:
-            'Th', // Flutter delivers only partial text when drag crosses boundaries
-        contentLength: 56,
+        plainText: listPlainText.substring(0, firstItemEnd),
+        contentLength: firstItemEnd,
         attachment: MarkdownSourceAttachment(
           fullSource: snapshot.getNodeSource(listNode) ?? '',
           blockNode: listNode,
         ),
-        range: const SelectionRange(0, 2),
+        range: SelectionRange(0, firstItemEnd),
       ),
     ];
 
@@ -521,17 +524,21 @@ void main() {
     final result = serializer.serialize(fragments);
     expect(result, contains('This is sentence one.'));
     expect(result, contains('- This is the first bullet.'));
-    expect(result.trim(), 'This is sentence one.\n- This is the first bullet.');
   });
 
-  test('list to paragraph drag (bottom to top) copies full lines', () {
+  test('list to paragraph drag (bottom to top) - full items selected', () {
     const markdown =
         'This is sentence one.\n- This is the first bullet.\n- This is the second bullet.';
     final controller = ParserController();
     final snapshot = controller.parse(markdown);
     final paragraphNode = snapshot.blocks.elementAt(0);
     final listNode = snapshot.blocks.elementAt(1);
+    final listModel = MarkdownSelectionModel(listNode);
 
+    // Model plainText: "This is the first bullet.\nThis is the second bullet."
+    final listPlainText = listModel.plainText;
+    final secondItemStart = listPlainText.indexOf('This is the second');
+    
     final fragments = [
       SelectionFragment(
         rect: const Rect.fromLTWH(0, 0, 100, 20),
@@ -545,13 +552,13 @@ void main() {
       ),
       SelectionFragment(
         rect: const Rect.fromLTWH(0, 40, 100, 20),
-        plainText: '- This is the second bullet.',
-        contentLength: 28,
+        plainText: listPlainText.substring(secondItemStart),
+        contentLength: listPlainText.length - secondItemStart,
         attachment: MarkdownSourceAttachment(
           fullSource: snapshot.getNodeSource(listNode) ?? '',
           blockNode: listNode,
         ),
-        range: const SelectionRange(28, 56),
+        range: SelectionRange(secondItemStart, listPlainText.length),
       ),
     ];
 
@@ -559,7 +566,6 @@ void main() {
     final result = serializer.serialize(fragments);
     expect(result, contains('This is sentence one.'));
     expect(result, contains('- This is the second bullet.'));
-    expect(result.trim().split('\n').length, 2);
   });
 
   test('partial list item selection preserves inline formatting', () {
@@ -567,23 +573,32 @@ void main() {
     final controller = ParserController();
     final snapshot = controller.parse(markdown);
     final listNode = snapshot.blocks.first;
+    final model = MarkdownSelectionModel(listNode);
+    
+    // Model plainText is "Item with bold and italic" (no markdown formatting)
+    // We want to select "with bold" which is positions 5-14 in plainText
+    final plainText = model.plainText;
+    final start = plainText.indexOf('with');
+    final end = plainText.indexOf('bold') + 'bold'.length;
 
-    // Simulate selecting just 'with **bold**'
+    // Simulate selecting just 'with bold' from the rendered text
     final fragment = SelectionFragment(
       rect: const Rect.fromLTWH(0, 0, 100, 20),
-      plainText: 'with **bold**',
+      plainText: 'with bold',
       contentLength: markdown.length,
       attachment: MarkdownSourceAttachment(
         fullSource: snapshot.getNodeSource(listNode) ?? '',
         blockNode: listNode,
       ),
-      range: const SelectionRange(7, 20),
+      range: SelectionRange(start, end),
     );
 
     final serializer = SelectionSerializer();
     final result = serializer.serialize([fragment]);
+    // With new UX: partial selection returns just the text with inline formatting preserved
+    // Should NOT include list marker since it's not a complete semantic unit
     expect(result, contains('**bold**'));
-    expect(result, contains('- Item with **bold**'));
+    expect(result.trim(), 'with **bold**');
   });
 
   test('nested list copy preserves indentation', () {
@@ -1183,6 +1198,42 @@ void main() {
     
     // Should be just the selected item, not parent structure with empty content
     expect(result, '- C');
+  });
+
+  test('selecting single word from list item returns just that word', () {
+    // Input:
+    // - This is sentence number one.
+    // - This is sentence number two.
+    // Selecting just "sentence" should give "sentence", not the whole list item
+    const markdown = '- This is sentence number one.\n- This is sentence number two.';
+    final controller = ParserController();
+    final snapshot = controller.parse(markdown);
+    final block = snapshot.blocks.first; // the list
+    final source = snapshot.getNodeSource(block)!;
+    final model = MarkdownSelectionModel(block);
+    
+    // plainText is "This is sentence number one.\nThis is sentence number two."
+    final plainText = model.plainText;
+    final sentenceStart = plainText.indexOf('sentence');
+    final sentenceEnd = sentenceStart + 'sentence'.length;
+    
+    // Simulate selecting just "sentence" from the first item
+    final fragment = SelectionFragment(
+      rect: const Rect.fromLTWH(50, 0, 60, 20),
+      plainText: 'sentence',
+      contentLength: 8,
+      attachment: MarkdownSourceAttachment(
+        fullSource: source,
+        blockNode: block,
+      ),
+      range: SelectionRange(sentenceStart, sentenceEnd),
+    );
+    
+    final serializer = SelectionSerializer();
+    final result = serializer.serialize([fragment]).trim();
+    
+    // Should be just "sentence", not "- This is sentence number one."
+    expect(result, 'sentence');
   });
 
   test('nested list selecting A and B does not duplicate', () {

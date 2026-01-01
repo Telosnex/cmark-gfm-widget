@@ -699,20 +699,49 @@ class SelectionSerializer {
       return fragment.plainText;
     }
 
-    // Expand range to line boundaries in the model's plain text
+    // Check if selection covers complete semantic units (full list items)
+    // vs partial/substring selections
     final plainText = model.plainText;
-    var start = range.normalizedStart.clamp(0, plainText.length);
-    var end = range.normalizedEnd.clamp(0, plainText.length);
+    final originalStart = range.normalizedStart.clamp(0, plainText.length);
+    final originalEnd = range.normalizedEnd.clamp(0, plainText.length);
     
-    // Expand start backward to line beginning
-    while (start > 0 && plainText[start - 1] != '\n') {
-      start--;
+    // Find line boundaries
+    var firstLineStart = originalStart;
+    while (firstLineStart > 0 && plainText[firstLineStart - 1] != '\n') {
+      firstLineStart--;
+    }
+    var lastLineEnd = originalEnd;
+    while (lastLineEnd < plainText.length && plainText[lastLineEnd] != '\n') {
+      lastLineEnd++;
     }
     
-    // Expand end forward to line ending
-    while (end < plainText.length && plainText[end] != '\n') {
-      end++;
+    // Check if selection covers complete semantic unit (full line content)
+    // Only include structural markers (list bullets) if the ENTIRE line is selected
+    final startsAtLineStart = originalStart == firstLineStart;
+    final endsAtLineEnd = originalEnd >= lastLineEnd;
+    final coversFullLine = startsAtLineStart && endsAtLineEnd;
+    
+    debugLog(() => '  → startsAtLineStart=$startsAtLineStart endsAtLineEnd=$endsAtLineEnd coversFullLine=$coversFullLine');
+    
+    // If partial selection (doesn't cover full line), return just the selected text
+    if (!coversFullLine) {
+      // Use model.toMarkdown for the exact range to preserve inline formatting
+      var partialMarkdown = model.toMarkdown(originalStart, originalEnd);
+      
+      // Strip list markers AND indent from partial selections since they're not complete items
+      // Matches: "  - ", "  * ", "1. ", "  12. ", etc. at the start of each line
+      partialMarkdown = partialMarkdown.replaceAllMapped(
+        RegExp(r'^\s*(\d+\.|[-*+])\s', multiLine: true),
+        (m) => '', // Remove indent and marker entirely
+      );
+      
+      debugLog(() => '  → partial selection (mid-line), returning: "$partialMarkdown"');
+      return partialMarkdown;
     }
+    
+    // Full semantic unit selection - expand to line boundaries for proper structure
+    var start = firstLineStart;
+    var end = lastLineEnd;
     if (end < plainText.length && plainText[end] == '\n') {
       end++; // Include the newline
     }

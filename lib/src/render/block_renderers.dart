@@ -62,6 +62,7 @@ class BlockRenderContext {
     required this.tableOptions,
     required this.codeBlockWrapper,
     this.mathBlockBuilder,
+    this.onLinkTap,
   });
 
   final CmarkThemeData theme;
@@ -72,6 +73,8 @@ class BlockRenderContext {
   final TableRenderOptions tableOptions;
   final CodeBlockWrapperBuilder? codeBlockWrapper;
   final BlockMathWidgetBuilder? mathBlockBuilder;
+  /// Optional tap handler for links (Markdown links).
+  final LinkTapHandler? onLinkTap;
   
   /// Optional leading spans to prepend to the first text block.
   final List<InlineSpan> leadingSpans;
@@ -97,6 +100,7 @@ List<BlockRenderResult> renderDocumentBlocks(
             tableOptions: context.tableOptions,
             codeBlockWrapper: context.codeBlockWrapper,
             mathBlockBuilder: context.mathBlockBuilder,
+            onLinkTap: context.onLinkTap,
           )
         : context;
     

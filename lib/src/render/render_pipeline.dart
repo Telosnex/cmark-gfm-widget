@@ -19,6 +19,7 @@ class RenderOptions {
     this.codeBlockWrapper,
     this.mathOptions = const MathRenderOptions(),
     this.leadingSpans = const [],
+    this.onLinkTap,
   });
 
   final bool selectable;
@@ -28,6 +29,8 @@ class RenderOptions {
   final TableRenderOptions tableOptions;
   final CodeBlockWrapperBuilder? codeBlockWrapper;
   final MathRenderOptions mathOptions;
+  /// Optional tap handler for links (Markdown links).
+  final LinkTapHandler? onLinkTap;
   
   /// Optional leading spans to prepend to the first text block.
   final List<InlineSpan> leadingSpans;
@@ -75,6 +78,7 @@ class RenderPipeline {
       textScaleFactor: options.textScaleFactor,
       footnoteReferenceBuilder: options.footnoteReferenceBuilder,
       mathInlineBuilder: options.mathOptions.inlineBuilder,
+      onLinkTap: options.onLinkTap,
     );
     final blockContext = BlockRenderContext(
       theme: theme,

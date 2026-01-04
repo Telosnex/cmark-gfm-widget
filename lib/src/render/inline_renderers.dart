@@ -17,18 +17,23 @@ typedef InlineMathSpanBuilder = InlineSpan Function(
   TextStyle baseStyle,
 );
 
+/// Callback for handling link taps. Receives the link URL and optional title.
+typedef LinkTapHandler = void Function(String url, String? title);
+
 class InlineRenderContext {
   InlineRenderContext({
     required this.theme,
     required this.textScaleFactor,
     this.footnoteReferenceBuilder,
     this.mathInlineBuilder,
+    this.onLinkTap,
   });
 
   final CmarkThemeData theme;
   final double textScaleFactor;
   final FootnoteReferenceSpanBuilder? footnoteReferenceBuilder;
   final InlineMathSpanBuilder? mathInlineBuilder;
+  final LinkTapHandler? onLinkTap;
 }
 
 
@@ -102,10 +107,39 @@ InlineSpan _renderInlineNode(
     case CmarkNodeType.link:
       final merged = baseStyle.merge(context.theme.linkTextStyle);
       final children = renderInlineChildren(node, context, merged);
-      if (children.isEmpty) {
-        return TextSpan(text: node.linkData.url, style: merged);
+      final url = node.linkData.url;
+      final title = node.linkData.title.isEmpty ? null : node.linkData.title;
+
+      // If no children, show the URL as text
+      final spanChildren = children.isEmpty
+          ? <InlineSpan>[TextSpan(text: url)]
+          : children;
+
+      // If we have a tap handler, wrap in a GestureDetector to ensure taps work
+      // even inside SelectionArea/SelectableRegion.
+      if (context.onLinkTap != null) {
+        return WidgetSpan(
+          alignment: PlaceholderAlignment.baseline,
+          baseline: TextBaseline.alphabetic,
+          child: GestureDetector(
+            onTap: () => context.onLinkTap?.call(url, title),
+            behavior: HitTestBehavior.translucent,
+            child: MouseRegion(
+              cursor: SystemMouseCursors.click,
+              child: Text.rich(
+                TextSpan(style: merged, children: spanChildren),
+                textScaler: TextScaler.linear(context.textScaleFactor),
+              ),
+            ),
+          ),
+        );
       }
-      return TextSpan(style: merged, children: children);
+
+      // No handler: plain selectable TextSpan
+      return TextSpan(
+        style: merged,
+        children: spanChildren,
+      );
     case CmarkNodeType.image:
       final alt = _collectPlainText(node) ?? node.linkData.title;
       final url = node.linkData.url;

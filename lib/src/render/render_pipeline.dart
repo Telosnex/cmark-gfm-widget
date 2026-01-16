@@ -86,13 +86,13 @@ class RenderPipeline {
       selectable: options.selectable,
       textScaleFactor: options.textScaleFactor,
       renderFootnoteDefinitions: options.renderFootnoteDefinitions,
-      leadingSpans: options.leadingSpans,
+      leadingSpans: const [], // Don't put leadingSpans in base context - handled separately
       tableOptions: options.tableOptions,
       codeBlockWrapper: options.codeBlockWrapper,
       mathBlockBuilder: options.mathOptions.blockBuilder,
     );
 
-    return renderDocumentBlocks(snapshot, blockContext);
+    return renderDocumentBlocks(snapshot, options.leadingSpans, blockContext);
   }
 
   List<Widget> buildWidgets(

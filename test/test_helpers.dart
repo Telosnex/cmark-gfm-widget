@@ -41,7 +41,7 @@ List<BlockRenderResult> renderMarkdownBlocks(String markdown, {bool selectable =
   final snapshot = controller.parse(markdown);
   final context = createTestBlockContext(selectable: selectable);
   
-  return renderDocumentBlocks(snapshot, context);
+  return renderDocumentBlocks(snapshot, const [], context);
 }
 
 /// Converts rendered blocks into a deterministic, human-readable string that

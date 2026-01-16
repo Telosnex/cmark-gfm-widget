@@ -22,6 +22,7 @@ class CmarkMarkdownColumn extends StatefulWidget {
     this.textScaleFactor,
     this.parserOptions = const CmarkParserOptions(enableMath: true),
     this.onSelectionChanged,
+    this.leadingSpans = const [],
   }) : assert(
          (data != null) ^ (snapshot != null),
          'Provide either data or snapshot.',
@@ -53,6 +54,9 @@ class CmarkMarkdownColumn extends StatefulWidget {
   
   /// Callback when selection changes (only used when selectable=true).
   final void Function(SelectedContent?)? onSelectionChanged;
+
+  /// Optional leading spans to prepend to the first text block.
+  final List<InlineSpan> leadingSpans;
 
   @override
   State<CmarkMarkdownColumn> createState() => _CmarkMarkdownColumnState();
@@ -150,6 +154,7 @@ class _CmarkMarkdownColumnState extends State<CmarkMarkdownColumn> {
     final options = RenderOptions(
       selectable: widget.selectable,
       textScaleFactor: textScale,
+      leadingSpans: widget.leadingSpans,
     );
 
     final children = _pipeline.buildWidgets(snapshot, theme, options);
@@ -190,6 +195,7 @@ class SelectableCmarkMarkdownColumn extends StatelessWidget {
     this.textScaleFactor,
     this.parserOptions = const CmarkParserOptions(enableMath: true),
     this.onSelectionChanged,
+    this.leadingSpans = const [],
   });
 
   final String? data;
@@ -200,6 +206,7 @@ class SelectableCmarkMarkdownColumn extends StatelessWidget {
   final double? textScaleFactor;
   final CmarkParserOptions parserOptions;
   final void Function(SelectedContent?)? onSelectionChanged;
+  final List<InlineSpan> leadingSpans;
 
   @override
   Widget build(BuildContext context) {
@@ -213,6 +220,7 @@ class SelectableCmarkMarkdownColumn extends StatelessWidget {
       textScaleFactor: textScaleFactor,
       parserOptions: parserOptions,
       onSelectionChanged: onSelectionChanged,
+      leadingSpans: leadingSpans,
     );
   }
 }

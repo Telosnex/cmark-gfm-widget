@@ -82,10 +82,11 @@ class BlockRenderContext {
 
 List<BlockRenderResult> renderDocumentBlocks(
   DocumentSnapshot snapshot,
+  List<InlineSpan> leadingSpans,
   BlockRenderContext context,
 ) {
   final results = <BlockRenderResult>[];
-  var remainingLeadingSpans = context.leadingSpans;
+  var remainingLeadingSpans = leadingSpans;
   
   for (final block in snapshot.blocks) {
     // Pass leading spans to first text block, then clear
@@ -107,16 +108,9 @@ List<BlockRenderResult> renderDocumentBlocks(
     var widget = _renderBlock(block, blockContext);
     if (widget == null) continue;
     
-    // Clear leading spans after first block that can contain text
+    // Clear leading spans after first block - they only apply to the first block
     if (remainingLeadingSpans.isNotEmpty) {
-      switch (block.type) {
-        case CmarkNodeType.paragraph:
-        case CmarkNodeType.heading:
-          remainingLeadingSpans = const [];
-          break;
-        default:
-          break;
-      }
+      remainingLeadingSpans = const [];
     }
 
     final metadata = DocumentSnapshot.metadataFor(block);

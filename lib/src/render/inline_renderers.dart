@@ -1,4 +1,5 @@
 import 'package:cmark_gfm/cmark_gfm.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter_math_fork/flutter_math.dart';
 import 'package:pixel_snap/material.dart';
 
@@ -35,7 +36,6 @@ class InlineRenderContext {
   final InlineMathSpanBuilder? mathInlineBuilder;
   final LinkTapHandler? onLinkTap;
 }
-
 
 /// Renders all inline children of [parent] using [baseStyle].
 List<InlineSpan> renderInlineChildren(
@@ -112,33 +112,31 @@ InlineSpan _renderInlineNode(
 
       // If no children, show the URL as text
       final spanChildren = children.isEmpty
-          ? <InlineSpan>[TextSpan(text: url)]
+          ? <InlineSpan>[TextSpan(text: url, style: merged)]
           : children;
 
-      // If we have a tap handler, wrap in a GestureDetector to ensure taps work
-      // even inside SelectionArea/SelectableRegion.
-      if (context.onLinkTap != null) {
-        return WidgetSpan(
-          alignment: PlaceholderAlignment.baseline,
-          baseline: TextBaseline.alphabetic,
-          child: GestureDetector(
-            onTap: () => context.onLinkTap?.call(url, title),
-            behavior: HitTestBehavior.translucent,
-            child: MouseRegion(
-              cursor: SystemMouseCursors.click,
-              child: Text.rich(
-                TextSpan(style: merged, children: spanChildren),
-                textScaler: TextScaler.linear(context.textScaleFactor),
-              ),
-            ),
-          ),
-        );
-      }
+      // Apply click cursor to all children (no recognizer - GestureDetector handles taps)
+      final linkedChildren = _applyLinkBehavior(
+        spanChildren,
+        SystemMouseCursors.click,
+        null,
+      );
 
-      // No handler: plain selectable TextSpan
-      return TextSpan(
-        style: merged,
-        children: spanChildren,
+      // Wrap in WidgetSpan + GestureDetector for tap handling, passing a
+      // recognizer to TextSpan would require managing the recognizer's 
+      // lifecycle. SelectableText.rich keeps text selectable.
+      return WidgetSpan(
+        alignment: PlaceholderAlignment.baseline,
+        baseline: TextBaseline.alphabetic,
+        child: GestureDetector(
+          onTap: context.onLinkTap == null
+              ? null
+              : () => context.onLinkTap!(url, title),
+          child: SelectableText.rich(
+            TextSpan(style: merged, children: linkedChildren),
+            textScaler: TextScaler.linear(context.textScaleFactor),
+          ),
+        ),
       );
     case CmarkNodeType.image:
       final alt = _collectPlainText(node) ?? node.linkData.title;
@@ -176,6 +174,37 @@ InlineSpan _renderInlineNode(
         children: renderInlineChildren(node, context, baseStyle),
       );
   }
+}
+
+/// Recursively copies [spans], setting [cursor] and [recognizer] on all TextSpans.
+List<InlineSpan> _applyLinkBehavior(
+  List<InlineSpan> spans,
+  MouseCursor cursor,
+  GestureRecognizer? recognizer,
+) {
+  return spans.map((span) {
+    if (span is TextSpan) {
+      final childrenList = span.children;
+      return TextSpan(
+        text: span.text,
+        style: span.style,
+        children: childrenList != null
+            ? _applyLinkBehavior(
+                childrenList.cast<InlineSpan>(),
+                cursor,
+                recognizer,
+              )
+            : null,
+        recognizer: recognizer,
+        mouseCursor: cursor,
+        locale: span.locale,
+        spellOut: span.spellOut,
+        semanticsLabel: span.semanticsLabel,
+      );
+    }
+    // WidgetSpan etc - leave as-is
+    return span;
+  }).toList();
 }
 
 String? _collectPlainText(CmarkNode node) {

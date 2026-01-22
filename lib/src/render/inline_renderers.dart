@@ -124,7 +124,8 @@ InlineSpan _renderInlineNode(
 
       // Wrap in WidgetSpan + GestureDetector for tap handling, passing a
       // recognizer to TextSpan would require managing the recognizer's 
-      // lifecycle. SelectableText.rich keeps text selectable.
+      // lifecycle. SelectableText.rich would make the URL text not selectable
+      // and not tappable on mobile.
       return WidgetSpan(
         alignment: PlaceholderAlignment.baseline,
         baseline: TextBaseline.alphabetic,
@@ -132,7 +133,7 @@ InlineSpan _renderInlineNode(
           onTap: context.onLinkTap == null
               ? null
               : () => context.onLinkTap!(url, title),
-          child: SelectableText.rich(
+          child: Text.rich(
             TextSpan(style: merged, children: linkedChildren),
             textScaler: TextScaler.linear(context.textScaleFactor),
           ),

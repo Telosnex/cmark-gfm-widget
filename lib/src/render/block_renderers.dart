@@ -426,18 +426,19 @@ Widget _buildList(
 }) {
   final data = node.listData;
   final ordered = data.listType == CmarkListType.ordered;
-  final start = ordered ? (data.start == 0 ? 1 : data.start) : 1;
   final bullets = <Widget>[];
   var item = node.firstChild;
   var index = 0;
   while (item != null) {
     index += 1;
+    // Use each item's original number (listData.start) instead of calculating
+    final itemNumber = ordered ? item.listData.start : index;
     bullets.add(
       _buildListItem(
         item,
         context,
         ordered: ordered,
-        index: ordered ? start + index - 1 : index,
+        index: itemNumber == 0 ? index : itemNumber,
         tight: data.tight,
         level: level,
       ),

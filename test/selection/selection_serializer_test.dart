@@ -493,8 +493,8 @@ void main() {
     final listNode = snapshot.blocks.elementAt(1);
     final listModel = MarkdownSelectionModel(listNode);
 
-    // Simulate selecting full paragraph + full first list item (complete semantic units)
-    final listPlainText = listModel.plainText; // "This is the first bullet.\nThis is the second bullet."
+    // Simulate selecting full paragraph + full first list item
+    final listPlainText = listModel.plainText;
     final firstItemEnd = listPlainText.indexOf('\n');
     
     final fragments = [
@@ -523,7 +523,9 @@ void main() {
     final serializer = SelectionSerializer();
     final result = serializer.serialize(fragments);
     expect(result, contains('This is sentence one.'));
-    expect(result, contains('- This is the first bullet.'));
+    // No markdown expansion: plain text only, no list marker
+    expect(result, contains('This is the first bullet.'));
+    expect(result, isNot(contains('- ')));
   });
 
   test('list to paragraph drag (bottom to top) - full items selected', () {
@@ -535,7 +537,6 @@ void main() {
     final listNode = snapshot.blocks.elementAt(1);
     final listModel = MarkdownSelectionModel(listNode);
 
-    // Model plainText: "This is the first bullet.\nThis is the second bullet."
     final listPlainText = listModel.plainText;
     final secondItemStart = listPlainText.indexOf('This is the second');
     
@@ -565,18 +566,18 @@ void main() {
     final serializer = SelectionSerializer();
     final result = serializer.serialize(fragments);
     expect(result, contains('This is sentence one.'));
-    expect(result, contains('- This is the second bullet.'));
+    // No markdown expansion: plain text only, no list marker
+    expect(result, contains('This is the second bullet.'));
+    expect(result, isNot(contains('- ')));
   });
 
-  test('partial list item selection preserves inline formatting', () {
+  test('partial list item selection returns plain text only', () {
     const markdown = '- Item with **bold** and _italic_';
     final controller = ParserController();
     final snapshot = controller.parse(markdown);
     final listNode = snapshot.blocks.first;
     final model = MarkdownSelectionModel(listNode);
     
-    // Model plainText is "Item with bold and italic" (no markdown formatting)
-    // We want to select "with bold" which is positions 5-14 in plainText
     final plainText = model.plainText;
     final start = plainText.indexOf('with');
     final end = plainText.indexOf('bold') + 'bold'.length;
@@ -595,20 +596,17 @@ void main() {
 
     final serializer = SelectionSerializer();
     final result = serializer.serialize([fragment]);
-    // With new UX: partial selection returns just the text with inline formatting preserved
-    // Should NOT include list marker since it's not a complete semantic unit
-    expect(result, contains('**bold**'));
-    expect(result.trim(), 'with **bold**');
+    // No markdown expansion: returns fragment.plainText as-is
+    expect(result.trim(), 'with bold');
   });
 
-  test('nested list copy preserves indentation', () {
+  test('nested list copy returns plain text', () {
     const markdown = '- A\n  - B\n  - C\n  - D';
     final controller = ParserController();
     final snapshot = controller.parse(markdown);
     final listNode = snapshot.blocks.first;
     final listSource = snapshot.getNodeSource(listNode);
 
-    // This test fails if getNodeSource returns null for lists
     expect(listSource, isNotNull,
         reason: 'getNodeSource must return list source');
 
@@ -628,20 +626,21 @@ void main() {
 
     final serializer = SelectionSerializer();
     final result = serializer.serialize([fragment]);
-    expect(result, contains('- A'));
-    expect(result, contains('  - B'));
-    expect(result, contains('  - C'));
-    expect(result, contains('  - D'));
+    // No markdown expansion: returns plain text without markers
+    expect(result, contains('A'));
+    expect(result, contains('B'));
+    expect(result, contains('C'));
+    expect(result, contains('D'));
+    expect(result, isNot(contains('- ')));
   });
 
-  test('runtime-style full nested list copy emits all items', () {
+  test('runtime-style full nested list copy returns plain text', () {
     const markdown = '- A\n  - B\n  - C';
     final controller = ParserController();
     final snapshot = controller.parse(markdown);
     final listNode = snapshot.blocks.first;
     final listSource = snapshot.getNodeSource(listNode) ?? '';
 
-    // Sanity: getNodeSource should work for lists.
     expect(listSource, isNotEmpty);
 
     final attachment = MarkdownSourceAttachment(
@@ -693,10 +692,11 @@ void main() {
 
     final serializer = SelectionSerializer();
     final result = serializer.serialize(fragments).trim();
-    expect(result, '- A\n  - B\n  - C');
+    // No markdown expansion: returns concatenated plain text from fragments
+    expect(result, '• A• B• C');
   });
 
-  test('runtime-style partial nested list copy emits only selected items', () {
+  test('runtime-style partial nested list copy returns plain text', () {
     const markdown = '- A\n  - B\n  - C';
     final controller = ParserController();
     final snapshot = controller.parse(markdown);
@@ -741,10 +741,9 @@ void main() {
 
     final serializer = SelectionSerializer();
     final result = serializer.serialize(fragments).trim();
-    // Should NOT include C
-    expect(result, contains('- A'));
-    expect(result, contains('  - B'));
-    expect(result, isNot(contains('- C')));
+    // No markdown expansion: returns concatenated plain text
+    expect(result, '• A• B');
+    expect(result, isNot(contains('C')));
   });
 
   test('runtime-style table selection uses registry fallback', () {
@@ -865,11 +864,12 @@ void main() {
 
     final serializer = SelectionSerializer();
     final result = serializer.serialize([fragment]);
-    expect(result, contains('- '));
-    expect(result, contains('- Item'));
+    // No markdown expansion: returns plain text without markers
+    expect(result, contains('Item'));
+    expect(result, isNot(contains('- ')));
   });
 
-  test('list item with inline code and bold', () {
+  test('list item with inline code and bold returns plain text', () {
     const markdown = '- Item with `code` and **bold**';
     final controller = ParserController();
     final snapshot = controller.parse(markdown);
@@ -892,12 +892,11 @@ void main() {
 
     final serializer = SelectionSerializer();
     final result = serializer.serialize([fragment]);
-    expect(result, contains('`code`'));
-    expect(result, contains('**bold**'));
-    expect(result, contains('- Item'));
+    // No markdown expansion: returns plain text without formatting
+    expect(result, 'Item with code and bold');
   });
 
-  test('deeply nested list (3 levels) preserves all indentation', () {
+  test('deeply nested list (3 levels) returns plain text', () {
     const markdown = '- A\n  - B\n    - C\n    - D\n  - E';
     final controller = ParserController();
     final snapshot = controller.parse(markdown);
@@ -920,11 +919,8 @@ void main() {
 
     final serializer = SelectionSerializer();
     final result = serializer.serialize([fragment]);
-    expect(result, contains('- A'));
-    expect(result, contains('  - B'));
-    expect(result, contains('    - C'));
-    expect(result, contains('    - D'));
-    expect(result, contains('  - E'));
+    // No markdown expansion: returns plain text without markers/indentation
+    expect(result, 'A\nB\nC\nD\nE');
   });
 
   test('table with empty cells', () {
@@ -959,7 +955,7 @@ void main() {
     expect(result, contains('|  | B |'));
   });
 
-  test('list with links preserves link markdown', () {
+  test('list with links returns plain text', () {
     const markdown =
         '- Check [this](https://example.com)\n- And [that](https://other.com)';
     final controller = ParserController();
@@ -983,11 +979,13 @@ void main() {
 
     final serializer = SelectionSerializer();
     final result = serializer.serialize([fragment]);
-    expect(result, contains('[this](https://example.com)'));
-    expect(result, contains('[that](https://other.com)'));
+    // No markdown expansion: returns plain text without link markdown
+    expect(result, contains('Check this'));
+    expect(result, contains('And that'));
+    expect(result, isNot(contains('https://')));
   });
 
-  test('selecting middle items from ordered list copies correct numbers', () {
+  test('selecting middle items from ordered list returns plain text', () {
     const markdown =
         '1. One\n2. Two\n3. Three\n4. Four\n5. Five\n6. Six\n7. Seven\n8. Eight\n9. Nine\n10. Ten\n11. Eleven\n12. Twelve';
     final controller = ParserController();
@@ -1033,16 +1031,14 @@ void main() {
 
     final serializer = SelectionSerializer();
     final result = serializer.serialize(fragments).trim();
-    expect(result, contains('8. Eight'));
-    expect(result, contains('9. Nine'));
-    expect(result, isNot(contains('1. ')));
-    expect(result, isNot(contains('2. ')));
+    // No markdown expansion: returns concatenated plain text from fragments
+    expect(result, '• Eight• Nine');
   });
 
   test('full document with thematic breaks, heading, and list', () {
     const input = '---\n\n## Header\n\n1. **Some list item**\n   Some text.\n\n---';
-    // Note: serializer uses single newlines between blocks, not blank lines
-    const expected = '---\n## Header\n1. **Some list item**\nSome text.\n---';
+    // No markdown expansion: list items return plain text, headings/breaks pass through
+    const expected = '---\n## Header\nSome list item\nSome text.\n---';
     
     final controller = ParserController();
     final snapshot = controller.parse(input);
@@ -1109,16 +1105,13 @@ void main() {
   });
 
   test('multi-item list does not duplicate when Flutter splits markers and content', () {
-    // This test reproduces the bug where a 2-item list gets output multiple times
-    // because Flutter delivers separate fragments for "1. ", content, "2. ", content
-    // and the marker-only fragments expand to the full list.
+    // This test verifies that when Flutter delivers separate fragments for
+    // markers and content, the serializer returns plain text without duplication.
     const markdown = '## Header A\n\n1. **Item one**\n   Sub text one.\n\n---\n\n## Header B\n\n1. **Item two**\n   Sub text two.\n2. **Item three**\n   Sub text three.\n\n---\n\n*Footer*';
     final controller = ParserController();
     final snapshot = controller.parse(markdown);
     
-    // Find the second list (the one with 2 items)
     final blocks = snapshot.blocks.toList();
-    // Structure: heading, list(1 item), thematic_break, heading, list(2 items), thematic_break, paragraph
     final list2 = blocks.where((b) => b.type == CmarkNodeType.list).elementAt(1);
     final list2Source = snapshot.getNodeSource(list2) ?? '';
     expect(list2Source, contains('Item two'));
@@ -1130,30 +1123,25 @@ void main() {
     );
     
     // Simulate what Flutter delivers: separate fragments for markers and content
-    // NO ranges specified - simulates runtime where ranges are computed by indexOf
     final fragments = <SelectionFragment>[
-      // First item marker
       SelectionFragment(
         rect: const Rect.fromLTWH(0, 0, 20, 20),
         plainText: '1. ',
         contentLength: 3,
         attachment: attachment,
       ),
-      // First item content
       SelectionFragment(
         rect: const Rect.fromLTWH(20, 0, 100, 40),
         plainText: 'Item two\nSub text two.',
         contentLength: 22,
         attachment: attachment,
       ),
-      // Second item marker
       SelectionFragment(
         rect: const Rect.fromLTWH(0, 40, 20, 20),
         plainText: '2. ',
         contentLength: 3,
         attachment: attachment,
       ),
-      // Second item content
       SelectionFragment(
         rect: const Rect.fromLTWH(20, 40, 100, 40),
         plainText: 'Item three\nSub text three.',
@@ -1165,21 +1153,15 @@ void main() {
     final serializer = SelectionSerializer();
     final result = serializer.serialize(fragments).trim();
     
-    // Exact expected output - no duplicates, proper structure
-    expect(result, '1. **Item two**\nSub text two.\n2. **Item three**\nSub text three.');
+    // No markdown expansion: returns concatenated plain text from fragments
+    expect(result, 'Item two\nSub text two.\nItem three\nSub text three.');
   });
 
   test('nested list item selection returns just that item (C)', () {
-    // Input:
-    // - A
-    //   - B
-    //   - C
-    //   - D
-    // Selecting just "C" should give "- C", not "- \n  - C"
     const markdown = '- A\n  - B\n  - C\n  - D';
     final controller = ParserController();
     final snapshot = controller.parse(markdown);
-    final block = snapshot.blocks.first; // the list
+    final block = snapshot.blocks.first;
     final source = snapshot.getNodeSource(block)!;
     
     // Simulate selecting just "C"
@@ -1196,8 +1178,8 @@ void main() {
     final serializer = SelectionSerializer();
     final result = serializer.serialize([fragment]).trim();
     
-    // Should be just the selected item, not parent structure with empty content
-    expect(result, '- C');
+    // No markdown expansion: returns plain text only
+    expect(result, 'C');
   });
 
   test('selecting single word from list item returns just that word', () {
@@ -1236,16 +1218,7 @@ void main() {
     expect(result, 'sentence');
   });
 
-  test('nested list selecting A and B does not duplicate', () {
-    // Input:
-    // - A
-    //   - B
-    //   - C
-    //   - D
-    // Selecting A and B should give:
-    // - A
-    //   - B
-    // NOT duplicated content
+  test('nested list selecting A and B returns plain text', () {
     const markdown = '- A\n  - B\n  - C\n  - D';
     final controller = ParserController();
     final snapshot = controller.parse(markdown);
@@ -1253,28 +1226,21 @@ void main() {
     final source = snapshot.getNodeSource(block)!;
     final model = MarkdownSelectionModel(block);
     
-    // plainText is "A\nB\nC\nD"
     final plainText = model.plainText;
     final aStart = 0;
-    final bEnd = plainText.indexOf('B') + 1;  // End after B
+    final bEnd = plainText.indexOf('B') + 1;
     
-    // Simulate what Flutter might deliver: multiple fragments
-    // Fragment 1: bullet marker "• " (rendered bullet)
-    // Fragment 2: "A"
-    // Fragment 3: nested bullet "  • "
-    // Fragment 4: "B"
+    // Simulate what Flutter delivers: multiple fragments with bullet markers and text
     final fragments = <SelectionFragment>[
-      // Bullet marker for A
       SelectionFragment(
         rect: const Rect.fromLTWH(0, 0, 10, 20),
-        plainText: String.fromCharCodes([8226, 32]), // • + space from runtime
+        plainText: String.fromCharCodes([8226, 32]),
         contentLength: 2,
         attachment: MarkdownSourceAttachment(
           fullSource: source,
           blockNode: block,
         ),
       ),
-      // Text "A"
       SelectionFragment(
         rect: const Rect.fromLTWH(10, 0, 20, 20),
         plainText: 'A',
@@ -1285,17 +1251,15 @@ void main() {
         ),
         range: SelectionRange(aStart, aStart + 1),
       ),
-      // Nested bullet marker for B
       SelectionFragment(
         rect: const Rect.fromLTWH(0, 20, 20, 20),
-        plainText: '  ${String.fromCharCodes([8226])} ', // indent + • + space from runtime
+        plainText: '  ${String.fromCharCodes([8226])} ',
         contentLength: 4,
         attachment: MarkdownSourceAttachment(
           fullSource: source,
           blockNode: block,
         ),
       ),
-      // Text "B"
       SelectionFragment(
         rect: const Rect.fromLTWH(20, 20, 20, 20),
         plainText: 'B',
@@ -1311,25 +1275,18 @@ void main() {
     final serializer = SelectionSerializer();
     final result = serializer.serialize(fragments).trim();
     
-    // Should be properly structured, no duplicates
-    expect(result, '- A\n  - B');
+    // No markdown expansion: returns concatenated plain text
+    expect(result, 'A\nB');
   });
 
   test('nested list item selection returns just that item (B)', () {
-    // Input:
-    // - A
-    //   - B
-    //   - C
-    //   - D
-    // Selecting just "B" should give "- B", not "- A\n  - B"
     const markdown = '- A\n  - B\n  - C\n  - D';
     final controller = ParserController();
     final snapshot = controller.parse(markdown);
-    final block = snapshot.blocks.first; // the list
+    final block = snapshot.blocks.first;
     final source = snapshot.getNodeSource(block)!;
     final model = MarkdownSelectionModel(block);
     
-    // Find where "B" is in the plainText ("A\nB\nC\nD")
     final plainText = model.plainText;
     final bStart = plainText.indexOf('B');
     final bEnd = bStart + 1;
@@ -1349,8 +1306,8 @@ void main() {
     final serializer = SelectionSerializer();
     final result = serializer.serialize([fragment]).trim();
     
-    // Should be just "- B", not "- A\n  - B"
-    expect(result, '- B');
+    // No markdown expansion: returns plain text only
+    expect(result, 'B');
   });
 
   test('code block full selection includes fences', () {

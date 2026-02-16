@@ -672,92 +672,12 @@ class SelectionSerializer {
     MarkdownSourceAttachment attachment,
     SelectionRange? computedRange,
   ) {
-    // Skip list marker-only fragments (e.g., "1. ", "2. ", "- ")
-    // These don't appear in the model's plainText and would incorrectly
-    // expand to the full list. Content fragments will handle serialization.
-    final fragmentText = fragment.plainText;
-    final isMarkerOnly = _listMarkerOnlyPattern.hasMatch(fragmentText);
-    debugLog(() =>
-        '_expandListFragmentToLines: fragmentText="$fragmentText" codeUnits=${fragmentText.codeUnits} '
-        'isMarkerOnly=$isMarkerOnly');
-    if (isMarkerOnly) {
-      debugLog(() =>
-          '_expandListFragmentToLines: skipping marker-only fragment "$fragmentText"');
+    // Skip list marker-only fragments (e.g., "1. ", "2. ", "• ")
+    if (_listMarkerOnlyPattern.hasMatch(fragment.plainText)) {
       return '';
     }
 
-    final model = attachment.selectionModel;
-    final range = computedRange ?? fragment.range;
-    
-    debugLog(() =>
-        '_expandListFragmentToLines: model=${model != null} range=$range '
-        'fragmentPlainText="${fragment.plainText.replaceAll('\n', '\\n')}" '
-        'modelPlainText="${model?.plainText.replaceAll('\n', '\\n')}"');
-    
-    if (model == null || range == null) {
-      debugLog(() => '  → returning plain text (no model/range)');
-      return fragment.plainText;
-    }
-
-    // Check if selection covers complete semantic units (full list items)
-    // vs partial/substring selections
-    final plainText = model.plainText;
-    final originalStart = range.normalizedStart.clamp(0, plainText.length);
-    final originalEnd = range.normalizedEnd.clamp(0, plainText.length);
-    
-    // Find line boundaries
-    var firstLineStart = originalStart;
-    while (firstLineStart > 0 && plainText[firstLineStart - 1] != '\n') {
-      firstLineStart--;
-    }
-    var lastLineEnd = originalEnd;
-    while (lastLineEnd < plainText.length && plainText[lastLineEnd] != '\n') {
-      lastLineEnd++;
-    }
-    
-    // Check if selection covers complete semantic unit (full line content)
-    // Only include structural markers (list bullets) if the ENTIRE line is selected
-    final startsAtLineStart = originalStart == firstLineStart;
-    final endsAtLineEnd = originalEnd >= lastLineEnd;
-    final coversFullLine = startsAtLineStart && endsAtLineEnd;
-    
-    debugLog(() => '  → startsAtLineStart=$startsAtLineStart endsAtLineEnd=$endsAtLineEnd coversFullLine=$coversFullLine');
-    
-    // If partial selection (doesn't cover full line), return just the selected text
-    if (!coversFullLine) {
-      // Use model.toMarkdown for the exact range to preserve inline formatting
-      var partialMarkdown = model.toMarkdown(originalStart, originalEnd);
-      
-      // Strip list markers AND indent from partial selections since they're not complete items
-      // Matches: "  - ", "  * ", "1. ", "  12. ", etc. at the start of each line
-      partialMarkdown = partialMarkdown.replaceAllMapped(
-        RegExp(r'^\s*(\d+\.|[-*+])\s', multiLine: true),
-        (m) => '', // Remove indent and marker entirely
-      );
-      
-      debugLog(() => '  → partial selection (mid-line), returning: "$partialMarkdown"');
-      return partialMarkdown;
-    }
-    
-    // Full semantic unit selection - expand to line boundaries for proper structure
-    var start = firstLineStart;
-    var end = lastLineEnd;
-    if (end < plainText.length && plainText[end] == '\n') {
-      end++; // Include the newline
-    }
-
-    debugLog(() => '  → expanded range ($start, $end)');
-    
-    // Use the model to serialize the expanded range
-    final markdown = model.toMarkdown(start, end);
-    debugLog(() =>
-        '  → model.toMarkdown($start, $end) = '
-        '"${markdown.replaceAll('\n', '\\n')}"');
-    if (markdown.isNotEmpty) {
-      return markdown;
-    }
-
-    debugLog(() => '  → markdown empty, returning plain text');
+    // No expansion. Just return what was selected.
     return fragment.plainText;
   }
 }

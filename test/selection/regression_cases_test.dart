@@ -13,8 +13,7 @@ void main() {
   });
 
   test('regression: partial list selection returns selected text only', () {
-    // With the new semantic unit UX, partial selections return just the selected text,
-    // not expanded full lines. Only complete semantic units get markdown structure.
+    // No markdown expansion: selection returns fragment.plainText as-is.
     const markdown = '- Bullet one with word A\n'
         '- Bullet two with word B\n'
         '- Bullet three with word C\n';
@@ -23,10 +22,8 @@ void main() {
     final listNode = snapshot.blocks.first;
     final model = MarkdownSelectionModel(listNode);
     
-    // Model plainText: "Bullet one with word A\nBullet two with word B\nBullet three with word C"
-    // Select from start of line 1 to end of line 2 (complete semantic units)
     final plainText = model.plainText;
-    final endOfLine2 = plainText.indexOf('Bullet three') - 1; // before the \n
+    final endOfLine2 = plainText.indexOf('Bullet three') - 1;
 
     final fragment = SelectionFragment(
       rect: Rect.zero,
@@ -41,9 +38,10 @@ void main() {
 
     final serializer = SelectionSerializer();
     final result = serializer.serialize([fragment]);
-    // Complete lines selected → include markers
-    expect(result, contains('- Bullet one with word A'));
-    expect(result, contains('- Bullet two with word B'));
+    // No markdown expansion: plain text without markers
+    expect(result, contains('Bullet one with word A'));
+    expect(result, contains('Bullet two with word B'));
+    expect(result, isNot(contains('- ')));
   });
 
   test('regression: mid-line partial selection returns just selected text', () {

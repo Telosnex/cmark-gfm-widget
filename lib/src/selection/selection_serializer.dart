@@ -447,25 +447,14 @@ class SelectionSerializer {
     final cellTexts = <String>[];
     for (final index in selectionIndices) {
       final fragment = fragments[index];
-      final range = fragment.range;
-      final model = fragment.attachment?.selectionModel;
-      if (model != null && range != null) {
-        cellTexts.add(
-          model.toMarkdown(range.normalizedStart, range.normalizedEnd),
-        );
-      } else {
-        cellTexts.add(fragment.plainText);
-      }
+      cellTexts.add(fragment.plainText);
     }
 
     return '| ${cellTexts.join(' | ')} |';
   }
 
   String _serializeEntireNode(SelectionFragment fragment) {
-    final attachment = fragment.attachment!;
-    final model = attachment.selectionModel;
-    assert(model != null, 'Expected selection model for block node attachments.');
-    return model!.toMarkdown(0, model.length);
+    return fragment.plainText;
   }
 
   String _serializeFragment(SelectionFragment fragment) {
@@ -524,35 +513,10 @@ class SelectionSerializer {
     }
 
     if (nodeType == CmarkNodeType.list) {
-      final normalizedSource = attachment.fullSource.trim();
-      final normalizedPlainText = fragment.plainText.trim();
-      final bool fullSourceMatches = normalizedSource == normalizedPlainText;
-      if (!fullSourceMatches) {
-        return _expandListFragmentToLines(fragment, attachment, range);
-      }
+      return _expandListFragmentToLines(fragment, attachment, range);
     }
 
-    final model = attachment.selectionModel;
-    if (model != null) {
-      final snippet =
-          model.toMarkdown(range.normalizedStart, range.normalizedEnd);
-      if (snippet.isNotEmpty) {
-        return snippet;
-      }
-    }
-
-    if (range.isFull(fragment.contentLength)) {
-      // For table cells, fall back to the aggregate plain text rather than
-      // the cell's own source. The selection system may have collapsed an
-      // entire table into a single fragment, and using the cell source here
-      // would drop all but the first cell.
-      if (nodeType == CmarkNodeType.tableCell) {
-        return fragment.plainText;
-      }
-
-      return attachment.fullSource;
-    }
-
+    // No markdown expansion. Just return the plain text the user sees.
     return fragment.plainText;
   }
 

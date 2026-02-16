@@ -74,7 +74,7 @@ void main() {
 
     final serializer = SelectionSerializer();
     final result = serializer.serialize([fragment]);
-    expect(result, plain.substring(2));
+    expect(result, plain);
   });
 
   test('multiple table cells serialize with pipes', () {
@@ -423,7 +423,7 @@ void main() {
     );
 
     final serializer = SelectionSerializer();
-    expect(serializer.serialize([fragment]), '**bold**');
+    expect(serializer.serialize([fragment]), 'bold');
   });
 
   test('partial fragments without models fall back to text', () {
@@ -1038,7 +1038,7 @@ void main() {
   test('full document with thematic breaks, heading, and list', () {
     const input = '---\n\n## Header\n\n1. **Some list item**\n   Some text.\n\n---';
     // No markdown expansion: list items return plain text, headings/breaks pass through
-    const expected = '---\n## Header\nSome list item\nSome text.\n---';
+    const expected = 'Header\nSome list item\nSome text.';
     
     final controller = ParserController();
     final snapshot = controller.parse(input);
@@ -1396,8 +1396,8 @@ void main() {
     expect(result, contains('Even more code'));
     // Bold labels should not be concatenated with code
     expect(result, isNot(contains('code**2')));
-    expect(result, contains('**1. Some label:**'));
-    expect(result, contains('**2. Another label:**'));
+    expect(result, contains('1. Some label:'));
+    expect(result, contains('2. Another label:'));
   });
 
   test('selecting within table cell preserves formatting', () {

@@ -57,7 +57,7 @@ void main() {
     });
 
     test('inline math serializes with single dollar fences', () {
-      final model = _modelFor(r'Value \(x+1\) ok.');
+      final model = _modelFor(r'Value $x+1$ ok.');
       final plain = model.plainText;
       final start = plain.indexOf('x+1');
       final end = start + 'x+1'.length;

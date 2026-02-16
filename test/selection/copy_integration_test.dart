@@ -219,5 +219,57 @@ void main() {
         'This is a quote.\nNormal text.',
       );
     });
+
+    // === Regressions ===
+
+    testWidgets('non-sequential ordered list numbers', (tester) async {
+      await tester.pumpWidget(buildTestWidget(
+        '1. In n Out\n2. El Pollo Loco\n3. Pupuseria\n7. Dominican place\n10. Vons',
+      ));
+      await tester.pumpAndSettle();
+      expect(await selectAllAndCopy(tester),
+        '1. In n Out\n2. El Pollo Loco\n3. Pupuseria\n7. Dominican place\n10. Vons',
+      );
+    });
+
+    testWidgets('strikethrough is plain text', (tester) async {
+      await tester.pumpWidget(buildTestWidget(
+        'This is ~~deleted~~ text.',
+      ));
+      await tester.pumpAndSettle();
+      expect(await selectAllAndCopy(tester),
+        'This is deleted text.',
+      );
+    });
+
+    testWidgets('ordered list items with bold content', (tester) async {
+      await tester.pumpWidget(buildTestWidget(
+        '1. **Bold first**\n2. **Bold second**\n3. Plain third',
+      ));
+      await tester.pumpAndSettle();
+      expect(await selectAllAndCopy(tester),
+        '1. Bold first\n2. Bold second\n3. Plain third',
+      );
+    });
+
+    testWidgets('multiple code blocks with text between', (tester) async {
+      await tester.pumpWidget(buildTestWidget(
+        '```\nfirst\n```\n\nMiddle text.\n\n```\nsecond\n```',
+      ));
+      await tester.pumpAndSettle();
+      expect(await selectAllAndCopy(tester),
+        'first\nMiddle text.\nsecond',
+      );
+    });
+
+    testWidgets('deeply nested list', (tester) async {
+      await tester.pumpWidget(buildTestWidget(
+        '- Level 1\n  - Level 2\n    - Level 3',
+      ));
+      await tester.pumpAndSettle();
+      expect(await selectAllAndCopy(tester),
+        '\u2022 Level 1\n\u2022 Level 2\n\u2022 Level 3',
+      );
+    });
   });
 }

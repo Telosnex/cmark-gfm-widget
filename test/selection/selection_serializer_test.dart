@@ -1039,8 +1039,8 @@ void main() {
 
   test('full document with thematic breaks, heading, and list', () {
     const input = '---\n\n## Header\n\n1. **Some list item**\n   Some text.\n\n---';
-    // No markdown expansion: list items return plain text, headings/breaks pass through
-    const expected = 'Header\nSome list item\nSome text.';
+    // Thematic breaks are serialized, headings and list items are plain text
+    const expected = '---\n\nHeader\nSome list item\nSome text.\n---';
     
     final controller = ParserController();
     final snapshot = controller.parse(input);

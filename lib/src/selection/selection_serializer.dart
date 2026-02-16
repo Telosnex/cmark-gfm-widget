@@ -131,10 +131,13 @@ class SelectionSerializer {
       }
 
       final range = fragment.range;
+      final nodeType = attachment?.blockNode?.type;
       final isDuplicateBlock = attachment != null &&
           attachment == lastAttachmentUsed &&
           range != null &&
-          range.isFull(fragment.contentLength);
+          range.isFull(fragment.contentLength) &&
+          // List fragments share one attachment but represent different items.
+          nodeType != CmarkNodeType.list;
 
       if (isDuplicateBlock) {
         debugLog(() => 'Skipping duplicate fragment for ${attachment.blockNode?.type}');
@@ -514,6 +517,13 @@ class SelectionSerializer {
 
     if (nodeType == CmarkNodeType.list) {
       return _expandListFragmentToLines(fragment, attachment, range);
+    }
+
+    // Thematic breaks render invisible \r---\r text for selectability.
+    // Return clean --- with trailing newline since the thin rule widget
+    // is too close vertically to the next block for topDiff to trigger.
+    if (nodeType == CmarkNodeType.thematicBreak) {
+      return '---\n';
     }
 
     // No markdown expansion. Just return the plain text the user sees.

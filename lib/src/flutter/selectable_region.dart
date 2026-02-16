@@ -18,8 +18,6 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:vector_math/vector_math_64.dart';
 
-import 'package:cmark_gfm/cmark_gfm.dart';
-
 import '../widgets/source_markdown_registry.dart';
 import '../selection/leaf_text_registry.dart';
 import '../selection/selection_serializer.dart';
@@ -2927,33 +2925,7 @@ abstract class MultiSelectableSelectionContainerDelegate extends SelectionContai
       final attachment = entry.key;
       final group = entry.value;
 
-      if (attachment != null && attachment.blockNode?.type == CmarkNodeType.list && group.length > 1) {
-        // Multiple fragments for same list - aggregate them
-        final allText = group.map((e) => e.$1.plainText).join();
-        final model = attachment.selectionModel;
-        final modelText = model?.plainText ?? '';
-        final normalizedFragments = allText.replaceAll('• ', '').replaceAll('\n', '');
-        final normalizedModel = modelText.replaceAll('\n', '');
-        
-        debugLog(() =>
-            '📦 Aggregating ${group.length} list fragments: '
-            'text="$normalizedFragments" model="$normalizedModel" '
-            'match=${normalizedFragments == normalizedModel}');
-
-        if (normalizedFragments == normalizedModel) {
-          // Full list selection - emit as one fragment with full range
-          fragments.add(SelectionFragment(
-            rect: group.first.$2,
-            plainText: allText,
-            contentLength: modelText.length,
-            attachment: attachment,
-            range: SelectionRange(0, modelText.length),
-          ));
-          continue;
-        }
-      }
-
-      // Not aggregatable or not a multi-fragment list - emit individually
+      // Emit fragments individually
       for (final (data, rect) in group) {
         final plainText = data.plainText;
         

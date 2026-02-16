@@ -66,7 +66,7 @@ class SelectionSerializer {
     // Pre-process: aggregate list fragments that belong to same node.
     // Flutter often delivers list selections as many tiny fragments (bullet + text
     // runs), so we collapse them into one fragment per list with a proper range.
-    final aggregated = _aggregateListFragments(fragments);
+    final aggregated = fragments;
 
     final buffer = StringBuffer();
     MarkdownSourceAttachment? lastAttachmentUsed;
@@ -539,92 +539,6 @@ class SelectionSerializer {
       }
       child = child.next;
     }
-  }
-
-  /// Collapses Flutter's per-run list fragments into a single fragment per
-  /// list attachment so we can compute the correct selection range before
-  /// serialization.
-  List<SelectionFragment> _aggregateListFragments(
-      List<SelectionFragment> fragments) {
-    // Group fragments by their attachment
-    final groups = <MarkdownSourceAttachment?, List<SelectionFragment>>{};
-    for (final fragment in fragments) {
-      groups.putIfAbsent(fragment.attachment, () => []).add(fragment);
-    }
-
-    final aggregated = <SelectionFragment>[];
-    for (final entry in groups.entries) {
-      final attachment = entry.key;
-      final group = entry.value;
-
-      // Only aggregate if it's a list with multiple fragments and no ranges
-      if (attachment != null &&
-          attachment.blockNode?.type == CmarkNodeType.list &&
-          group.length > 1 &&
-          group.every((f) => f.range == null)) {
-        final allText = group.map((f) => f.plainText).join();
-        final model = attachment.selectionModel;
-        final modelText = model?.plainText ?? '';
-        final normalizedFragments = allText.replaceAll('• ', '').replaceAll('\n', '');
-        final normalizedModel = modelText.replaceAll('\n', '');
-
-        debugLog(() =>
-            '📦 Aggregating ${group.length} list fragments: '
-            'text="$normalizedFragments" model="$normalizedModel" '
-            'match=${normalizedFragments == normalizedModel}');
-
-        if (normalizedFragments == normalizedModel) {
-          // Full list selection
-          aggregated.add(SelectionFragment(
-            rect: group.first.rect,
-            plainText: allText,
-            contentLength: modelText.length,
-            attachment: attachment,
-            range: SelectionRange(0, modelText.length),
-          ));
-        } else {
-          // Partial list - find WHERE in the actual plainText (with newlines).
-          // We can't use normalized offsets because newlines shift positions.
-          // Instead, search for the first and last actual text fragments (skip bullets)
-          // in the model's plainText to compute the true range.
-          final textFragments = group
-              .where((f) => f.plainText.trim().isNotEmpty && !f.plainText.startsWith('•'))
-              .toList();
-          
-          if (textFragments.isEmpty) {
-            aggregated.addAll(group);
-          } else {
-            final firstText = textFragments.first.plainText;
-            final lastText = textFragments.last.plainText;
-            
-            final startOffset = modelText.indexOf(firstText);
-            if (startOffset == -1) {
-              aggregated.addAll(group);
-            } else {
-              var endOffset = modelText.indexOf(lastText, startOffset);
-              if (endOffset != -1) {
-                endOffset += lastText.length;
-              } else {
-                endOffset = startOffset + firstText.length;
-              }
-              
-              aggregated.add(SelectionFragment(
-                rect: group.first.rect,
-                plainText: allText,
-                contentLength: modelText.length,
-                attachment: attachment,
-                range: SelectionRange(startOffset, endOffset),
-              ));
-            }
-          }
-        }
-      } else {
-        // Not a multi-fragment list - keep as-is
-        aggregated.addAll(group);
-      }
-    }
-
-    return aggregated;
   }
 
   /// Regex matching list markers like "1. ", "2. ", "- ", "* ", "• ", etc.

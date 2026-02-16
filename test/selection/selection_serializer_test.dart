@@ -650,40 +650,42 @@ void main() {
 
     // Simulate what Flutter delivers at runtime: separate fragments for bullets
     // and text, all pointing at the same list attachment, with no ranges.
+    // Each item is at a different vertical position (top) so the serializer
+    // inserts newlines between them.
     const bullet = '• ';
     final fragments = <SelectionFragment>[
       SelectionFragment(
-        rect: Rect.zero,
+        rect: const Rect.fromLTWH(0, 0, 20, 20),
         plainText: bullet,
         contentLength: bullet.length,
         attachment: attachment,
       ),
       SelectionFragment(
-        rect: Rect.zero,
+        rect: const Rect.fromLTWH(20, 0, 20, 20),
         plainText: 'A',
         contentLength: 1,
         attachment: attachment,
       ),
       SelectionFragment(
-        rect: Rect.zero,
+        rect: const Rect.fromLTWH(0, 30, 20, 20),
         plainText: bullet,
         contentLength: bullet.length,
         attachment: attachment,
       ),
       SelectionFragment(
-        rect: Rect.zero,
+        rect: const Rect.fromLTWH(20, 30, 20, 20),
         plainText: 'B',
         contentLength: 1,
         attachment: attachment,
       ),
       SelectionFragment(
-        rect: Rect.zero,
+        rect: const Rect.fromLTWH(0, 60, 20, 20),
         plainText: bullet,
         contentLength: bullet.length,
         attachment: attachment,
       ),
       SelectionFragment(
-        rect: Rect.zero,
+        rect: const Rect.fromLTWH(20, 60, 20, 20),
         plainText: 'C',
         contentLength: 1,
         attachment: attachment,
@@ -692,8 +694,8 @@ void main() {
 
     final serializer = SelectionSerializer();
     final result = serializer.serialize(fragments).trim();
-    // No markdown expansion: returns concatenated plain text from fragments
-    expect(result, '• A• B• C');
+    // Each item on its own line, no markers
+    expect(result, 'A\nB\nC');
   });
 
   test('runtime-style partial nested list copy returns plain text', () {
@@ -714,25 +716,25 @@ void main() {
     const bullet = '• ';
     final fragments = <SelectionFragment>[
       SelectionFragment(
-        rect: Rect.zero,
+        rect: const Rect.fromLTWH(0, 0, 20, 20),
         plainText: bullet,
         contentLength: bullet.length,
         attachment: attachment,
       ),
       SelectionFragment(
-        rect: Rect.zero,
+        rect: const Rect.fromLTWH(20, 0, 20, 20),
         plainText: 'A',
         contentLength: 1,
         attachment: attachment,
       ),
       SelectionFragment(
-        rect: Rect.zero,
+        rect: const Rect.fromLTWH(0, 30, 20, 20),
         plainText: bullet,
         contentLength: bullet.length,
         attachment: attachment,
       ),
       SelectionFragment(
-        rect: Rect.zero,
+        rect: const Rect.fromLTWH(20, 30, 20, 20),
         plainText: 'B',
         contentLength: 1,
         attachment: attachment,
@@ -741,8 +743,8 @@ void main() {
 
     final serializer = SelectionSerializer();
     final result = serializer.serialize(fragments).trim();
-    // No markdown expansion: returns concatenated plain text
-    expect(result, '• A• B');
+    // Each item on its own line, no markers
+    expect(result, 'A\nB');
     expect(result, isNot(contains('C')));
   });
 
@@ -1004,25 +1006,25 @@ void main() {
     const bullet = '• ';
     final fragments = <SelectionFragment>[
       SelectionFragment(
-        rect: Rect.zero,
+        rect: const Rect.fromLTWH(0, 0, 20, 20),
         plainText: bullet,
         contentLength: 2,
         attachment: attachment,
       ),
       SelectionFragment(
-        rect: Rect.zero,
+        rect: const Rect.fromLTWH(20, 0, 60, 20),
         plainText: 'Eight',
         contentLength: 5,
         attachment: attachment,
       ),
       SelectionFragment(
-        rect: Rect.zero,
+        rect: const Rect.fromLTWH(0, 30, 20, 20),
         plainText: bullet,
         contentLength: 2,
         attachment: attachment,
       ),
       SelectionFragment(
-        rect: Rect.zero,
+        rect: const Rect.fromLTWH(20, 30, 60, 20),
         plainText: 'Nine',
         contentLength: 4,
         attachment: attachment,
@@ -1031,8 +1033,8 @@ void main() {
 
     final serializer = SelectionSerializer();
     final result = serializer.serialize(fragments).trim();
-    // No markdown expansion: returns concatenated plain text from fragments
-    expect(result, '• Eight• Nine');
+    // Each item on its own line, no markers
+    expect(result, 'Eight\nNine');
   });
 
   test('full document with thematic breaks, heading, and list', () {

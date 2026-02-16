@@ -485,7 +485,7 @@ class SelectionSerializer {
       if (model != null) {
         final modelText = model.plainText;
         final trimmedPlain = fragment.plainText.trim();
-        if (trimmedPlain.isNotEmpty && !_listMarkerOnlyPattern.hasMatch(fragment.plainText)) {
+        if (trimmedPlain.isNotEmpty) {
           final startIdx = modelText.indexOf(trimmedPlain);
           if (startIdx >= 0) {
             range = SelectionRange(startIdx, startIdx + trimmedPlain.length);
@@ -550,11 +550,6 @@ class SelectionSerializer {
     MarkdownSourceAttachment attachment,
     SelectionRange? computedRange,
   ) {
-    // Skip list marker-only fragments (e.g., "1. ", "2. ", "• ")
-    if (_listMarkerOnlyPattern.hasMatch(fragment.plainText)) {
-      return '';
-    }
-
     // No expansion. Just return what was selected.
     return fragment.plainText;
   }

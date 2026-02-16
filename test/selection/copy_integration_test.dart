@@ -137,7 +137,7 @@ void main() {
       ));
       await tester.pumpAndSettle();
       expect(await selectAllAndCopy(tester),
-        '```dart\nvoid main() {\n  print("hello");\n}\n```',
+        'void main() {\n  print("hello");\n}',
       );
     });
 
@@ -147,7 +147,7 @@ void main() {
       ));
       await tester.pumpAndSettle();
       expect(await selectAllAndCopy(tester),
-        'Some text.\n```\ncode here\n```\nMore text.',
+        'Some text.\ncode here\nMore text.',
       );
     });
 

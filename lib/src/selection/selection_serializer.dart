@@ -465,22 +465,7 @@ class SelectionSerializer {
     var range = fragment.range;
     final CmarkNodeType? nodeType = attachment?.blockNode?.type;
     
-    // Code blocks: use fences only if entire block is selected
-    if (attachment != null && nodeType == CmarkNodeType.codeBlock) {
-      final model = attachment.selectionModel;
-      final modelPlainText = model?.plainText ?? '';
-      final fragmentText = fragment.plainText.trim();
-      // Full block if fragment matches model's plainText (the code content)
-      final isFullBlock = fragmentText.isNotEmpty && fragmentText == modelPlainText.trim();
-      debugLog(() => 'Code block: isFullBlock=$isFullBlock fragment="${fragmentText.replaceAll('\n', '\\n')}" model="${modelPlainText.replaceAll('\n', '\\n')}"');
-      if (isFullBlock) {
-        // Full selection - include fences
-        return attachment.fullSource;
-      } else {
-        // Partial selection - just the selected text, no fences
-        return fragment.plainText;
-      }
-    }
+    
 
     // For list fragments without a range, compute one from plainText
     if (attachment != null && range == null && nodeType == CmarkNodeType.list) {

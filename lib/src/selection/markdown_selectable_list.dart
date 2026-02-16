@@ -79,76 +79,9 @@ class MarkdownListSelectionDelegate
 
   @visibleForTesting
   String? markdownForRanges(List<SelectionRange> ranges) {
-    if (ranges.isEmpty) {
-      return null;
-    }
-    final source = attachment.fullSource;
-    if (source.isEmpty) {
-      return null;
-    }
-    final expanded = _expandRangesToLineBoundaries(ranges, source);
-    if (expanded.isEmpty) {
-      return null;
-    }
-    final int start = _clamp(expanded.first.normalizedStart, 0, source.length);
-    final int end = _clamp(expanded.last.normalizedEnd, 0, source.length);
-    if (start >= end) {
-      return null;
-    }
-    return source.substring(start, end);
-  }
-
-  List<SelectionRange> _expandRangesToLineBoundaries(
-    List<SelectionRange> ranges,
-    String source,
-  ) {
-    if (ranges.isEmpty) {
-      return <SelectionRange>[];
-    }
-    final expanded = <SelectionRange>[];
-    for (final range in ranges) {
-      var start = _clamp(range.normalizedStart, 0, source.length);
-      var end = _clamp(range.normalizedEnd, 0, source.length);
-      while (start > 0 && source[start - 1] != '\n') {
-        start--;
-      }
-      while (end < source.length && source[end] != '\n') {
-        end++;
-      }
-      if (end < source.length) {
-        end++;
-      }
-      expanded.add(SelectionRange(start, end));
-    }
-    expanded.sort((a, b) => a.normalizedStart.compareTo(b.normalizedStart));
-    final merged = <SelectionRange>[];
-    for (final range in expanded) {
-      if (merged.isEmpty) {
-        merged.add(range);
-        continue;
-      }
-      final last = merged.last;
-      if (range.normalizedStart <= last.normalizedEnd) {
-        final newEnd = range.normalizedEnd > last.normalizedEnd
-            ? range.normalizedEnd
-            : last.normalizedEnd;
-        merged[merged.length - 1] = SelectionRange(
-          last.normalizedStart,
-          newEnd,
-        );
-      } else {
-        merged.add(range);
-      }
-    }
-    return merged;
+    // fullSource was removed from MarkdownSourceAttachment.
+    // This code path is behind kUseMarkdownSelectables (disabled by default).
+    // Falls back to super.getSelectedContent() via the null return.
+    return null;
   }
 }
-  int _clamp(int value, int min, int max) {
-    if (value < min) {
-      return min;
-    }
-    if (value > max) {
-      return max;
-    }
-    return value;
-  }

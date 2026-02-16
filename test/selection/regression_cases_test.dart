@@ -30,7 +30,6 @@ void main() {
       plainText: plainText.substring(0, endOfLine2),
       contentLength: endOfLine2,
       attachment: MarkdownSourceAttachment(
-        fullSource: markdown,
         blockNode: listNode,
       ),
       range: SelectionRange(0, endOfLine2),
@@ -68,7 +67,6 @@ void main() {
       plainText: plainText.substring(start, end),
       contentLength: end - start,
       attachment: MarkdownSourceAttachment(
-        fullSource: markdown,
         blockNode: listNode,
       ),
       range: SelectionRange(start, end),

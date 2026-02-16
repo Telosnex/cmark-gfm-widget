@@ -2789,37 +2789,28 @@ abstract class MultiSelectableSelectionContainerDelegate extends SelectionContai
     _endHandleLayerOwner!.pushHandleLayers(null, effectiveEndHandle);
   }
 
-  /// Try to find source markdown by checking registry for RenderObject ancestors.
-  String? _findSourceMarkdown(Selectable selectable) {
+  /// Try to find the MarkdownSourceAttachment for a selectable by walking
+  /// up the render tree.
+  MarkdownSourceAttachment? _findAttachment(Selectable selectable) {
     RenderObject? renderObject;
 
     if (selectable is RenderObject) {
       renderObject = selectable as RenderObject;
     } else {
-      // Try to get RenderObject from _SelectableFragment.paragraph (via dynamic)
       try {
         renderObject = (selectable as dynamic).paragraph as RenderObject?;
       } catch (e) {
-        // Might be a SelectionContainer - try to get its context's renderObject
         try {
-          // _SelectionContainerState has a context with a renderObject
           final context = (selectable as dynamic).context;
           if (context != null) {
             renderObject = (context as BuildContext).findRenderObject();
-            debugLog(() => '🔍 _findSourceMarkdown: got renderObject from context for ${selectable.runtimeType}');
           }
-        } catch (e2) {
-          debugLog(() => '⚠️ _findSourceMarkdown: dynamic access failed for ${selectable.runtimeType}: $e, $e2');
-        }
+        } catch (_) {}
       }
     }
 
-    if (renderObject == null) {
-      debugLog(() => '⚠️ _findSourceMarkdown: no renderObject for ${selectable.runtimeType}');
-      return null;
-    }
-
-    return SourceMarkdownRegistry.instance.findSourceForRenderObject(renderObject);
+    if (renderObject == null) return null;
+    return SourceMarkdownRegistry.instance.findAttachment(renderObject);
   }
 
   /// Copies the selected contents of all [Selectable]s.
@@ -2865,48 +2856,7 @@ abstract class MultiSelectableSelectionContainerDelegate extends SelectionContai
     // First pass: get attachment for each selection
     final rawFragments = <(SelectedContent, Rect, MarkdownSourceAttachment?)>[];
     for (final (selectable, data, rect) in selections) {
-      final plainText = data.plainText;
-      final source = _findSourceMarkdown(selectable);
-      
-      debugLog(() =>
-          'SelectableRegion: fragment candidate plainTextLen=${plainText.length} '
-          'sourceLen=${source?.length ?? 0}');
-      
-      MarkdownSourceAttachment? attachment;
-      if (source != null) {
-        RenderObject? renderObject;
-        if (selectable is RenderObject) {
-          renderObject = selectable as RenderObject;
-        } else {
-          try {
-            renderObject = (selectable as dynamic).paragraph as RenderObject?;
-          } catch (_) {
-            try {
-              renderObject = (selectable as dynamic).renderObject as RenderObject?;
-            } catch (_) {
-              // Try context.findRenderObject() for SelectionContainer
-              try {
-                final context = (selectable as dynamic).context;
-                if (context != null) {
-                  renderObject = (context as BuildContext).findRenderObject();
-                }
-              } catch (_) {}
-            }
-          }
-        }
-        
-        if (renderObject != null) {
-          attachment = SourceMarkdownRegistry.instance.findAttachment(renderObject);
-          debugLog(() =>
-              '🔍 Looking up attachment for ${selectable.runtimeType} '
-              'renderObject=${renderObject.runtimeType}:${renderObject.hashCode} '
-              'found=${attachment != null}');
-        } else {
-          debugLog(() =>
-              '🔍 No renderObject found for ${selectable.runtimeType}');
-        }
-      }
-      
+      final attachment = _findAttachment(selectable);
       rawFragments.add((data, rect, attachment));
     }
 
@@ -2945,34 +2895,11 @@ abstract class MultiSelectableSelectionContainerDelegate extends SelectionContai
           }
         }
         
-        // Compute range by finding where this fragment's text appears in the model
-        SelectionRange? range;
-        if (attachment != null) {
-          final model = attachment.selectionModel;
-          if (model != null) {
-            final modelText = model.plainText;
-            final trimmedPlain = plainText.trim();
-            if (trimmedPlain.isNotEmpty) {
-              final startIdx = modelText.indexOf(trimmedPlain);
-              if (startIdx >= 0) {
-                range = SelectionRange(startIdx, startIdx + trimmedPlain.length);
-              } else {
-                // Full range fallback
-                range = SelectionRange(0, model.length);
-              }
-            } else {
-              // Empty or whitespace-only - use full range
-              range = SelectionRange(0, model.length);
-            }
-          }
-        }
-        
         fragments.add(SelectionFragment(
           rect: rect,
           plainText: plainText,
           contentLength: plainText.length,
           attachment: attachment,
-          range: range,
         ));
       }
     }

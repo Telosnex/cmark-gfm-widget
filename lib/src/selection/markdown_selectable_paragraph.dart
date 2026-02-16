@@ -78,10 +78,11 @@ class MarkdownParagraphSelectionDelegate
 
   @visibleForTesting
   String? markdownForRanges(List<SelectionRange> ranges) {
-    final MarkdownSelectionModel? model = attachment.selectionModel;
-    if (model == null || ranges.isEmpty) {
+    final node = attachment.blockNode;
+    if (node == null || ranges.isEmpty) {
       return null;
     }
+    final model = MarkdownSelectionModel(node);
     final int start = ranges.first.normalizedStart;
     final int end = ranges.last.normalizedEnd;
     return model.toMarkdown(start, end);

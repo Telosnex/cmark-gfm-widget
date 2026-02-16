@@ -2,25 +2,13 @@ import 'package:cmark_gfm/cmark_gfm.dart';
 import 'package:flutter/rendering.dart';
 
 import '../flutter/debug_log.dart';
-import '../selection/markdown_selection_model.dart';
 
 class MarkdownSourceAttachment {
   MarkdownSourceAttachment({
-    required this.fullSource,
     this.blockNode,
   });
 
-  final String fullSource;
   final CmarkNode? blockNode;
-
-  MarkdownSelectionModel? _selectionModel;
-  MarkdownSelectionModel? get selectionModel {
-    final node = blockNode;
-    if (node == null) {
-      return null;
-    }
-    return _selectionModel ??= MarkdownSelectionModel(node);
-  }
 }
 
 /// Global registry mapping RenderObjects to their original markdown source.
@@ -41,7 +29,7 @@ class SourceMarkdownRegistry {
     _registry[renderObject] = attachment;
     debugLog(() =>
         '📝 Registered ${renderObject.runtimeType} hash=${renderObject.hashCode} '
-        'nodeType=${attachment.blockNode?.type} sourceLen=${attachment.fullSource.length}');
+        'nodeType=${attachment.blockNode?.type}');
   }
   
   /// Find source markdown by checking the RenderObject and its ancestors
@@ -62,15 +50,6 @@ class SourceMarkdownRegistry {
     return null;
   }
 
-  String? findSourceForRenderObject(RenderObject renderObject) {
-    final attachment = findAttachment(renderObject);
-    if (attachment == null) {
-      debugLog(() => '🔍 findSourceForRenderObject: no attachment found');
-      return null;
-    }
-    debugLog(() => '🔍 findSourceForRenderObject: attachment found, sourceLen=${attachment.fullSource.length}');
-    return attachment.fullSource;
-  }
   
   /// Clear isn't supported with Expando, but objects get GC'd naturally
   void clear() {

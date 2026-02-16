@@ -14,9 +14,8 @@ void main() {
     );
 
     // SourceAwareWidget wraps the heading but doesn't expose child in toStringDeep()
-    // at DiagnosticLevel.hidden. The important thing is the source is captured.
+    // at DiagnosticLevel.hidden.
     const expected = 'block: 1\n'
-        'source: "# A `B` C"\n'
         'SourceAwareWidget';
 
     expect(actual, expected);

@@ -25,17 +25,14 @@ class ParserController {
       root: root,
       registry: _registry,
       revision: _revision,
-      sourceMarkdown: data,
     );
   }
 
   /// Parses a sequence of [chunks], useful for streaming input.
   DocumentSnapshot parseChunks(Iterable<String> chunks) {
     final parser = CmarkParser(options: _parserOptions);
-    final fullSource = StringBuffer();
     for (final chunk in chunks) {
       parser.feed(chunk);
-      fullSource.write(chunk);
     }
     final root = parser.finish();
     _revision += 1;
@@ -43,7 +40,6 @@ class ParserController {
       root: root,
       registry: _registry,
       revision: _revision,
-      sourceMarkdown: fullSource.toString(),
     );
   }
 }

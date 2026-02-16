@@ -22,7 +22,6 @@ SelectionFragment _fragmentForNode(
     contentLength: plain.length,
     attachment: attachment ??
         MarkdownSourceAttachment(
-          fullSource: plain,
           blockNode: node,
         ),
     range: range ?? SelectionRange(0, plain.length),
@@ -66,7 +65,6 @@ void main() {
       plainText: plain,
       contentLength: plain.length,
       attachment: MarkdownSourceAttachment(
-        fullSource: plain,
         blockNode: paragraphNode,
       ),
       range: SelectionRange(2, plain.length),
@@ -99,7 +97,6 @@ void main() {
       plainText: modelB.plainText,
       contentLength: modelB.plainText.length,
       attachment: MarkdownSourceAttachment(
-        fullSource: modelB.plainText,
         blockNode: secondCell,
       ),
       range: null,
@@ -138,7 +135,6 @@ void main() {
     final plain = MarkdownSelectionModel(paragraphNode).plainText;
 
     final attachment = MarkdownSourceAttachment(
-      fullSource: plain,
       blockNode: paragraphNode,
     );
 
@@ -413,7 +409,7 @@ void main() {
   });
 
   test('full-range fragments without models use full source', () {
-    final attachment = MarkdownSourceAttachment(fullSource: '**bold**');
+    final attachment = MarkdownSourceAttachment();
     final fragment = SelectionFragment(
       rect: const Rect.fromLTWH(0, 0, 10, 10),
       plainText: 'bold',
@@ -427,7 +423,7 @@ void main() {
   });
 
   test('partial fragments without models fall back to text', () {
-    final attachment = MarkdownSourceAttachment(fullSource: '**bold**');
+    final attachment = MarkdownSourceAttachment();
     final fragment = SelectionFragment(
       rect: const Rect.fromLTWH(0, 0, 10, 10),
       plainText: 'bold',
@@ -503,7 +499,6 @@ void main() {
         plainText: 'This is sentence one.',
         contentLength: 21,
         attachment: MarkdownSourceAttachment(
-          fullSource: snapshot.getNodeSource(paragraphNode) ?? '',
           blockNode: paragraphNode,
         ),
         range: const SelectionRange(0, 21),
@@ -513,7 +508,6 @@ void main() {
         plainText: listPlainText.substring(0, firstItemEnd),
         contentLength: firstItemEnd,
         attachment: MarkdownSourceAttachment(
-          fullSource: snapshot.getNodeSource(listNode) ?? '',
           blockNode: listNode,
         ),
         range: SelectionRange(0, firstItemEnd),
@@ -546,7 +540,6 @@ void main() {
         plainText: 'This is sentence one.',
         contentLength: 21,
         attachment: MarkdownSourceAttachment(
-          fullSource: snapshot.getNodeSource(paragraphNode) ?? '',
           blockNode: paragraphNode,
         ),
         range: const SelectionRange(0, 21),
@@ -556,7 +549,6 @@ void main() {
         plainText: listPlainText.substring(secondItemStart),
         contentLength: listPlainText.length - secondItemStart,
         attachment: MarkdownSourceAttachment(
-          fullSource: snapshot.getNodeSource(listNode) ?? '',
           blockNode: listNode,
         ),
         range: SelectionRange(secondItemStart, listPlainText.length),
@@ -588,7 +580,6 @@ void main() {
       plainText: 'with bold',
       contentLength: markdown.length,
       attachment: MarkdownSourceAttachment(
-        fullSource: snapshot.getNodeSource(listNode) ?? '',
         blockNode: listNode,
       ),
       range: SelectionRange(start, end),
@@ -605,10 +596,7 @@ void main() {
     final controller = ParserController();
     final snapshot = controller.parse(markdown);
     final listNode = snapshot.blocks.first;
-    final listSource = snapshot.getNodeSource(listNode);
 
-    expect(listSource, isNotNull,
-        reason: 'getNodeSource must return list source');
 
     final model = MarkdownSelectionModel(listNode);
     final plainTextLen = model.plainText.length;
@@ -618,7 +606,6 @@ void main() {
       plainText: model.plainText,
       contentLength: plainTextLen,
       attachment: MarkdownSourceAttachment(
-        fullSource: listSource!,
         blockNode: listNode,
       ),
       range: SelectionRange(0, plainTextLen),
@@ -707,7 +694,6 @@ void main() {
         plainText: 'Intro text.',
         contentLength: 11,
         attachment: MarkdownSourceAttachment(
-          fullSource: snapshot.getNodeSource(paragraphNode) ?? '',
           blockNode: paragraphNode,
         ),
         range: const SelectionRange(0, 11),
@@ -732,11 +718,6 @@ void main() {
     final controller = ParserController();
     final snapshot = controller.parse(markdown);
     final listNode = snapshot.blocks.first;
-    final listSource = snapshot.getNodeSource(listNode) ?? '';
-
-    if (listSource.isEmpty) {
-      return; // Skip if parser doesn't handle this case
-    }
 
     final model = MarkdownSelectionModel(listNode);
     final fragment = SelectionFragment(
@@ -744,7 +725,6 @@ void main() {
       plainText: model.plainText,
       contentLength: model.plainText.length,
       attachment: MarkdownSourceAttachment(
-        fullSource: listSource,
         blockNode: listNode,
       ),
       range: SelectionRange(0, model.plainText.length),
@@ -762,9 +742,7 @@ void main() {
     final controller = ParserController();
     final snapshot = controller.parse(markdown);
     final listNode = snapshot.blocks.first;
-    final listSource = snapshot.getNodeSource(listNode) ?? '';
 
-    expect(listSource, isNotEmpty);
 
     final model = MarkdownSelectionModel(listNode);
     final fragment = SelectionFragment(
@@ -772,7 +750,6 @@ void main() {
       plainText: model.plainText,
       contentLength: model.plainText.length,
       attachment: MarkdownSourceAttachment(
-        fullSource: listSource,
         blockNode: listNode,
       ),
       range: SelectionRange(0, model.plainText.length),
@@ -789,9 +766,7 @@ void main() {
     final controller = ParserController();
     final snapshot = controller.parse(markdown);
     final listNode = snapshot.blocks.first;
-    final listSource = snapshot.getNodeSource(listNode) ?? '';
 
-    expect(listSource, isNotEmpty);
 
     final model = MarkdownSelectionModel(listNode);
     final fragment = SelectionFragment(
@@ -799,7 +774,6 @@ void main() {
       plainText: model.plainText,
       contentLength: model.plainText.length,
       attachment: MarkdownSourceAttachment(
-        fullSource: listSource,
         blockNode: listNode,
       ),
       range: SelectionRange(0, model.plainText.length),
@@ -849,9 +823,7 @@ void main() {
     final controller = ParserController();
     final snapshot = controller.parse(markdown);
     final listNode = snapshot.blocks.first;
-    final listSource = snapshot.getNodeSource(listNode) ?? '';
 
-    expect(listSource, isNotEmpty);
 
     final model = MarkdownSelectionModel(listNode);
     final fragment = SelectionFragment(
@@ -859,7 +831,6 @@ void main() {
       plainText: model.plainText,
       contentLength: model.plainText.length,
       attachment: MarkdownSourceAttachment(
-        fullSource: listSource,
         blockNode: listNode,
       ),
       range: SelectionRange(0, model.plainText.length),
@@ -885,14 +856,12 @@ void main() {
     final fragments = <SelectionFragment>[];
     var y = 0.0;
     for (final block in snapshot.blocks) {
-      final source = snapshot.getNodeSource(block) ?? '';
       final model = MarkdownSelectionModel(block);
       fragments.add(SelectionFragment(
         rect: Rect.fromLTWH(0, y, 100, 20),
         plainText: model.plainText,
         contentLength: model.length,
         attachment: MarkdownSourceAttachment(
-          fullSource: source,
           blockNode: block,
         ),
         range: SelectionRange(0, model.length),
@@ -918,7 +887,6 @@ void main() {
         plainText: 'A',
         contentLength: 1,
         attachment: MarkdownSourceAttachment(
-          fullSource: snapshot.getNodeSource(para1) ?? '',
           blockNode: para1,
         ),
         range: const SelectionRange(0, 1),
@@ -928,7 +896,6 @@ void main() {
         plainText: 'B',
         contentLength: 1,
         attachment: MarkdownSourceAttachment(
-          fullSource: snapshot.getNodeSource(para2) ?? '',
           blockNode: para2,
         ),
         range: const SelectionRange(0, 1),
@@ -947,7 +914,6 @@ void main() {
     final controller = ParserController();
     final snapshot = controller.parse(markdown);
     final block = snapshot.blocks.first;
-    final source = snapshot.getNodeSource(block)!;
     
     // Simulate selecting just "C"
     final fragment = SelectionFragment(
@@ -955,7 +921,6 @@ void main() {
       plainText: 'C',
       contentLength: 1,
       attachment: MarkdownSourceAttachment(
-        fullSource: source,
         blockNode: block,
       ),
     );
@@ -976,7 +941,6 @@ void main() {
     final controller = ParserController();
     final snapshot = controller.parse(markdown);
     final block = snapshot.blocks.first; // the list
-    final source = snapshot.getNodeSource(block)!;
     final model = MarkdownSelectionModel(block);
     
     // plainText is "This is sentence number one.\nThis is sentence number two."
@@ -990,7 +954,6 @@ void main() {
       plainText: 'sentence',
       contentLength: 8,
       attachment: MarkdownSourceAttachment(
-        fullSource: source,
         blockNode: block,
       ),
       range: SelectionRange(sentenceStart, sentenceEnd),
@@ -1008,7 +971,6 @@ void main() {
     final controller = ParserController();
     final snapshot = controller.parse(markdown);
     final block = snapshot.blocks.first;
-    final source = snapshot.getNodeSource(block)!;
     final model = MarkdownSelectionModel(block);
     
     final plainText = model.plainText;
@@ -1021,7 +983,6 @@ void main() {
       plainText: 'B',
       contentLength: 1,
       attachment: MarkdownSourceAttachment(
-        fullSource: source,
         blockNode: block,
       ),
       range: SelectionRange(bStart, bEnd),
@@ -1039,7 +1000,6 @@ void main() {
     final controller = ParserController();
     final snapshot = controller.parse(markdown);
     final block = snapshot.blocks.first;
-    final source = snapshot.getNodeSource(block)!;
     
     // Partial selection - just "line2"
     final fragment = SelectionFragment(
@@ -1047,7 +1007,6 @@ void main() {
       plainText: 'line2',
       contentLength: 5,
       attachment: MarkdownSourceAttachment(
-        fullSource: source,
         blockNode: block,
       ),
     );

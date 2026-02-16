@@ -25,15 +25,6 @@ BlockRenderContext createTestBlockContext({
   );
 }
 
-/// Helper to parse markdown and extract sources for all blocks
-List<String?> extractAllBlockSources(String markdown) {
-  final controller = ParserController();
-  final snapshot = controller.parse(markdown);
-  
-  return snapshot.blocks
-      .map((block) => snapshot.getNodeSource(block))
-      .toList();
-}
 
 /// Helper to parse and render markdown, returning BlockRenderResults with sources
 List<BlockRenderResult> renderMarkdownBlocks(String markdown, {bool selectable = true}) {
@@ -49,15 +40,10 @@ List<BlockRenderResult> renderMarkdownBlocks(String markdown, {bool selectable =
 String renderResultsToString(
   List<BlockRenderResult> results, {
   DiagnosticLevel minDiagnosticLevel = DiagnosticLevel.info,
-  bool includeSourceMarkdown = true,
 }) {
   final buffer = StringBuffer();
   for (final result in results) {
     buffer.writeln('block: ${result.id}');
-    if (includeSourceMarkdown && result.sourceMarkdown != null) {
-      final source = result.sourceMarkdown!.replaceAll('\n', r'\n');
-      buffer.writeln('source: "$source"');
-    }
     buffer.writeln(
       result.widget.toStringDeep(minLevel: minDiagnosticLevel).trimRight(),
     );
@@ -72,12 +58,10 @@ String renderMarkdownToDebugString(
   String markdown, {
   bool selectable = true,
   DiagnosticLevel minDiagnosticLevel = DiagnosticLevel.info,
-  bool includeSourceMarkdown = true,
 }) {
   final results = renderMarkdownBlocks(markdown, selectable: selectable);
   return renderResultsToString(
     results,
     minDiagnosticLevel: minDiagnosticLevel,
-    includeSourceMarkdown: includeSourceMarkdown,
   );
 }

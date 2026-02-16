@@ -13,7 +13,6 @@ void main() {
     final paragraphNode = snapshot.blocks.first;
 
     final attachment = MarkdownSourceAttachment(
-      fullSource: markdown,
       blockNode: paragraphNode,
     );
 

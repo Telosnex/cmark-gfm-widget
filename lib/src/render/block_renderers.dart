@@ -1,13 +1,13 @@
-import 'dart:math' as math;
-
 import 'package:cmark_gfm/cmark_gfm.dart';
 import 'package:cmark_gfm_widget/src/selection/markdown_selectable_paragraph.dart';
 import 'package:cmark_gfm_widget/src/widgets/source_markdown_registry.dart';
+
+import '../parser/document_snapshot.dart';
 import 'package:flutter_math_fork/flutter_math.dart';
 import 'package:pixel_snap/material.dart';
 
 import '../flutter/debug_log.dart';
-import '../parser/document_snapshot.dart';
+
 import '../theme/cmark_theme.dart';
 import '../highlight/highlight_adapter.dart';
 import '../widgets/source_aware_widget.dart';
@@ -37,13 +37,10 @@ final HighlightAdapter _highlightAdapter = HighlightAdapter();
 
 class BlockRenderResult {
   BlockRenderResult(
-      {required this.id, required this.widget, this.sourceMarkdown});
+      {required this.id, required this.widget});
 
   final String id;
   final Widget widget;
-
-  /// Original markdown source for this block (if available)
-  final String? sourceMarkdown;
 }
 
 typedef BlockMathWidgetBuilder = Widget Function(
@@ -115,21 +112,14 @@ List<BlockRenderResult> renderDocumentBlocks(
 
     final metadata = DocumentSnapshot.metadataFor(block);
     final id = metadata?.id ?? 'block-${results.length}';
-    final sourceMarkdown = snapshot.getNodeSource(block);
 
-    // Wrap with source metadata so the serializer can use AST attachments.
-    // This happens EVEN when custom selectables are disabled (kUseMarkdownSelectables=false)
-    // because SelectionSerializer needs the attachments to reconstruct markdown from
-    // Flutter's raw text fragments.
-    if (context.selectable && sourceMarkdown != null) {
+    // Wrap with source metadata so the serializer knows the block type.
+    if (context.selectable) {
       final attachment = MarkdownSourceAttachment(
-        fullSource: sourceMarkdown,
         blockNode: block,
       );
       debugLog(() =>
-          '🔧 Creating SourceAwareWidget for ${block.type} block=$id '
-          'sourceLen=${sourceMarkdown.length} '
-          'preview="${sourceMarkdown.substring(0, math.min(50, sourceMarkdown.length)).replaceAll('\n', '\\n')}"');
+          '🔧 Creating SourceAwareWidget for ${block.type} block=$id');
       widget = SourceAwareWidget(
         attachment: attachment,
         child: widget,
@@ -157,7 +147,7 @@ List<BlockRenderResult> renderDocumentBlocks(
     }
 
     results.add(BlockRenderResult(
-        id: id, widget: widget, sourceMarkdown: sourceMarkdown));
+        id: id, widget: widget));
   }
   return results;
 }
@@ -570,7 +560,6 @@ Widget _buildTable(CmarkNode node, BlockRenderContext context) {
       if (context.selectable) {
         alignedChild = SourceAwareWidget(
           attachment: MarkdownSourceAttachment(
-            fullSource: plainText,
             blockNode: cellNode,
           ),
           child: alignedChild,

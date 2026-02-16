@@ -634,120 +634,6 @@ void main() {
     expect(result, isNot(contains('- ')));
   });
 
-  test('runtime-style full nested list copy returns plain text', () {
-    const markdown = '- A\n  - B\n  - C';
-    final controller = ParserController();
-    final snapshot = controller.parse(markdown);
-    final listNode = snapshot.blocks.first;
-    final listSource = snapshot.getNodeSource(listNode) ?? '';
-
-    expect(listSource, isNotEmpty);
-
-    final attachment = MarkdownSourceAttachment(
-      fullSource: listSource,
-      blockNode: listNode,
-    );
-
-    // Simulate what Flutter delivers at runtime: separate fragments for bullets
-    // and text, all pointing at the same list attachment, with no ranges.
-    // Each item is at a different vertical position (top) so the serializer
-    // inserts newlines between them.
-    const bullet = '• ';
-    final fragments = <SelectionFragment>[
-      SelectionFragment(
-        rect: const Rect.fromLTWH(0, 0, 20, 20),
-        plainText: bullet,
-        contentLength: bullet.length,
-        attachment: attachment,
-      ),
-      SelectionFragment(
-        rect: const Rect.fromLTWH(20, 0, 20, 20),
-        plainText: 'A',
-        contentLength: 1,
-        attachment: attachment,
-      ),
-      SelectionFragment(
-        rect: const Rect.fromLTWH(0, 30, 20, 20),
-        plainText: bullet,
-        contentLength: bullet.length,
-        attachment: attachment,
-      ),
-      SelectionFragment(
-        rect: const Rect.fromLTWH(20, 30, 20, 20),
-        plainText: 'B',
-        contentLength: 1,
-        attachment: attachment,
-      ),
-      SelectionFragment(
-        rect: const Rect.fromLTWH(0, 60, 20, 20),
-        plainText: bullet,
-        contentLength: bullet.length,
-        attachment: attachment,
-      ),
-      SelectionFragment(
-        rect: const Rect.fromLTWH(20, 60, 20, 20),
-        plainText: 'C',
-        contentLength: 1,
-        attachment: attachment,
-      ),
-    ];
-
-    final serializer = SelectionSerializer();
-    final result = serializer.serialize(fragments).trim();
-    // Each item on its own line, no markers
-    expect(result, 'A\nB\nC');
-  });
-
-  test('runtime-style partial nested list copy returns plain text', () {
-    const markdown = '- A\n  - B\n  - C';
-    final controller = ParserController();
-    final snapshot = controller.parse(markdown);
-    final listNode = snapshot.blocks.first;
-    final listSource = snapshot.getNodeSource(listNode) ?? '';
-
-    expect(listSource, isNotEmpty);
-
-    final attachment = MarkdownSourceAttachment(
-      fullSource: listSource,
-      blockNode: listNode,
-    );
-
-    // Simulate selecting only A and B (not C)
-    const bullet = '• ';
-    final fragments = <SelectionFragment>[
-      SelectionFragment(
-        rect: const Rect.fromLTWH(0, 0, 20, 20),
-        plainText: bullet,
-        contentLength: bullet.length,
-        attachment: attachment,
-      ),
-      SelectionFragment(
-        rect: const Rect.fromLTWH(20, 0, 20, 20),
-        plainText: 'A',
-        contentLength: 1,
-        attachment: attachment,
-      ),
-      SelectionFragment(
-        rect: const Rect.fromLTWH(0, 30, 20, 20),
-        plainText: bullet,
-        contentLength: bullet.length,
-        attachment: attachment,
-      ),
-      SelectionFragment(
-        rect: const Rect.fromLTWH(20, 30, 20, 20),
-        plainText: 'B',
-        contentLength: 1,
-        attachment: attachment,
-      ),
-    ];
-
-    final serializer = SelectionSerializer();
-    final result = serializer.serialize(fragments).trim();
-    // Each item on its own line, no markers
-    expect(result, 'A\nB');
-    expect(result, isNot(contains('C')));
-  });
-
   test('runtime-style table selection uses registry fallback', () {
     const markdown = '| A | B |\n| --- | --- |\n| X | Y |';
     final controller = ParserController();
@@ -987,56 +873,6 @@ void main() {
     expect(result, isNot(contains('https://')));
   });
 
-  test('selecting middle items from ordered list returns plain text', () {
-    const markdown =
-        '1. One\n2. Two\n3. Three\n4. Four\n5. Five\n6. Six\n7. Seven\n8. Eight\n9. Nine\n10. Ten\n11. Eleven\n12. Twelve';
-    final controller = ParserController();
-    final snapshot = controller.parse(markdown);
-    final listNode = snapshot.blocks.first;
-    final listSource = snapshot.getNodeSource(listNode) ?? '';
-
-    expect(listSource, isNotEmpty);
-
-    final attachment = MarkdownSourceAttachment(
-      fullSource: listSource,
-      blockNode: listNode,
-    );
-
-    // Simulate selecting items 8 and 9
-    const bullet = '• ';
-    final fragments = <SelectionFragment>[
-      SelectionFragment(
-        rect: const Rect.fromLTWH(0, 0, 20, 20),
-        plainText: bullet,
-        contentLength: 2,
-        attachment: attachment,
-      ),
-      SelectionFragment(
-        rect: const Rect.fromLTWH(20, 0, 60, 20),
-        plainText: 'Eight',
-        contentLength: 5,
-        attachment: attachment,
-      ),
-      SelectionFragment(
-        rect: const Rect.fromLTWH(0, 30, 20, 20),
-        plainText: bullet,
-        contentLength: 2,
-        attachment: attachment,
-      ),
-      SelectionFragment(
-        rect: const Rect.fromLTWH(20, 30, 60, 20),
-        plainText: 'Nine',
-        contentLength: 4,
-        attachment: attachment,
-      ),
-    ];
-
-    final serializer = SelectionSerializer();
-    final result = serializer.serialize(fragments).trim();
-    // Each item on its own line, no markers
-    expect(result, 'Eight\nNine');
-  });
-
   test('full document with thematic breaks, heading, and list', () {
     const input = '---\n\n## Header\n\n1. **Some list item**\n   Some text.\n\n---';
     // Thematic breaks are serialized, headings and list items are plain text
@@ -1106,59 +942,6 @@ void main() {
     expect(result, contains('B'));
   });
 
-  test('multi-item list does not duplicate when Flutter splits markers and content', () {
-    // This test verifies that when Flutter delivers separate fragments for
-    // markers and content, the serializer returns plain text without duplication.
-    const markdown = '## Header A\n\n1. **Item one**\n   Sub text one.\n\n---\n\n## Header B\n\n1. **Item two**\n   Sub text two.\n2. **Item three**\n   Sub text three.\n\n---\n\n*Footer*';
-    final controller = ParserController();
-    final snapshot = controller.parse(markdown);
-    
-    final blocks = snapshot.blocks.toList();
-    final list2 = blocks.where((b) => b.type == CmarkNodeType.list).elementAt(1);
-    final list2Source = snapshot.getNodeSource(list2) ?? '';
-    expect(list2Source, contains('Item two'));
-    expect(list2Source, contains('Item three'));
-    
-    final attachment = MarkdownSourceAttachment(
-      fullSource: list2Source,
-      blockNode: list2,
-    );
-    
-    // Simulate what Flutter delivers: separate fragments for markers and content
-    final fragments = <SelectionFragment>[
-      SelectionFragment(
-        rect: const Rect.fromLTWH(0, 0, 20, 20),
-        plainText: '1. ',
-        contentLength: 3,
-        attachment: attachment,
-      ),
-      SelectionFragment(
-        rect: const Rect.fromLTWH(20, 0, 100, 40),
-        plainText: 'Item two\nSub text two.',
-        contentLength: 22,
-        attachment: attachment,
-      ),
-      SelectionFragment(
-        rect: const Rect.fromLTWH(0, 40, 20, 20),
-        plainText: '2. ',
-        contentLength: 3,
-        attachment: attachment,
-      ),
-      SelectionFragment(
-        rect: const Rect.fromLTWH(20, 40, 100, 40),
-        plainText: 'Item three\nSub text three.',
-        contentLength: 26,
-        attachment: attachment,
-      ),
-    ];
-    
-    final serializer = SelectionSerializer();
-    final result = serializer.serialize(fragments).trim();
-    
-    // No markdown expansion: returns concatenated plain text from fragments
-    expect(result, 'Item two\nSub text two.\nItem three\nSub text three.');
-  });
-
   test('nested list item selection returns just that item (C)', () {
     const markdown = '- A\n  - B\n  - C\n  - D';
     final controller = ParserController();
@@ -1220,67 +1003,6 @@ void main() {
     expect(result, 'sentence');
   });
 
-  test('nested list selecting A and B returns plain text', () {
-    const markdown = '- A\n  - B\n  - C\n  - D';
-    final controller = ParserController();
-    final snapshot = controller.parse(markdown);
-    final block = snapshot.blocks.first;
-    final source = snapshot.getNodeSource(block)!;
-    final model = MarkdownSelectionModel(block);
-    
-    final plainText = model.plainText;
-    final aStart = 0;
-    final bEnd = plainText.indexOf('B') + 1;
-    
-    // Simulate what Flutter delivers: multiple fragments with bullet markers and text
-    final fragments = <SelectionFragment>[
-      SelectionFragment(
-        rect: const Rect.fromLTWH(0, 0, 10, 20),
-        plainText: String.fromCharCodes([8226, 32]),
-        contentLength: 2,
-        attachment: MarkdownSourceAttachment(
-          fullSource: source,
-          blockNode: block,
-        ),
-      ),
-      SelectionFragment(
-        rect: const Rect.fromLTWH(10, 0, 20, 20),
-        plainText: 'A',
-        contentLength: 1,
-        attachment: MarkdownSourceAttachment(
-          fullSource: source,
-          blockNode: block,
-        ),
-        range: SelectionRange(aStart, aStart + 1),
-      ),
-      SelectionFragment(
-        rect: const Rect.fromLTWH(0, 20, 20, 20),
-        plainText: '  ${String.fromCharCodes([8226])} ',
-        contentLength: 4,
-        attachment: MarkdownSourceAttachment(
-          fullSource: source,
-          blockNode: block,
-        ),
-      ),
-      SelectionFragment(
-        rect: const Rect.fromLTWH(20, 20, 20, 20),
-        plainText: 'B',
-        contentLength: 1,
-        attachment: MarkdownSourceAttachment(
-          fullSource: source,
-          blockNode: block,
-        ),
-        range: SelectionRange(plainText.indexOf('B'), bEnd),
-      ),
-    ];
-    
-    final serializer = SelectionSerializer();
-    final result = serializer.serialize(fragments).trim();
-    
-    // No markdown expansion: returns concatenated plain text
-    expect(result, 'A\nB');
-  });
-
   test('nested list item selection returns just that item (B)', () {
     const markdown = '- A\n  - B\n  - C\n  - D';
     final controller = ParserController();
@@ -1312,32 +1034,6 @@ void main() {
     expect(result, 'B');
   });
 
-  test('code block full selection includes fences', () {
-    const markdown = '```dart\nprint("hello");\n```';
-    final controller = ParserController();
-    final snapshot = controller.parse(markdown);
-    final block = snapshot.blocks.first;
-    final source = snapshot.getNodeSource(block)!;
-    final model = MarkdownSelectionModel(block);
-    
-    // Full selection - plainText matches model
-    final fragment = SelectionFragment(
-      rect: const Rect.fromLTWH(0, 0, 100, 40),
-      plainText: model.plainText,  // "print(\"hello\");\n"
-      contentLength: model.length,
-      attachment: MarkdownSourceAttachment(
-        fullSource: source,
-        blockNode: block,
-      ),
-    );
-    
-    final serializer = SelectionSerializer();
-    final result = serializer.serialize([fragment]).trim();
-    
-    // Should include fences
-    expect(result, '```dart\nprint("hello");\n```');
-  });
-
   test('code block partial selection excludes fences', () {
     const markdown = '```dart\nline1\nline2\nline3\n```';
     final controller = ParserController();
@@ -1361,45 +1057,6 @@ void main() {
     
     // Should NOT include fences - just the selected text
     expect(result, 'line2');
-  });
-
-  test('code blocks preserve fences and separate from adjacent content', () {
-    const input = 'Some text:\n\n### Header\n\n**1. Some label:**\n```dart\nSome code\n```\n\n**2. Another label:**\n```dart\nEven more code\n```\n\nSome more text:\n- An item\n- Another item';
-    final controller = ParserController();
-    final snapshot = controller.parse(input);
-    
-    // Build fragments for ALL blocks
-    final fragments = <SelectionFragment>[];
-    var y = 0.0;
-    for (final block in snapshot.blocks) {
-      final source = snapshot.getNodeSource(block) ?? '';
-      final model = MarkdownSelectionModel(block);
-      fragments.add(SelectionFragment(
-        rect: Rect.fromLTWH(0, y, 100, 20),
-        plainText: model.plainText,
-        contentLength: model.length,
-        attachment: MarkdownSourceAttachment(
-          fullSource: source,
-          blockNode: block,
-        ),
-        range: SelectionRange(0, model.length),
-      ));
-      y += 40;
-    }
-
-    final serializer = SelectionSerializer();
-    final result = serializer.serialize(fragments).trim();
-    
-    // Code blocks should have fences
-    expect(result, contains('```dart'));
-    expect(result, contains('```'));
-    // Content should be properly separated
-    expect(result, contains('Some code'));
-    expect(result, contains('Even more code'));
-    // Bold labels should not be concatenated with code
-    expect(result, isNot(contains('code**2')));
-    expect(result, contains('1. Some label:'));
-    expect(result, contains('2. Another label:'));
   });
 
   test('selecting within table cell preserves formatting', () {

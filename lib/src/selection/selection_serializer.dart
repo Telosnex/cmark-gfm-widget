@@ -63,27 +63,22 @@ class SelectionSerializer {
       return '';
     }
 
-    // Pre-process: aggregate list fragments that belong to same node.
-    // Flutter often delivers list selections as many tiny fragments (bullet + text
-    // runs), so we collapse them into one fragment per list with a proper range.
-    final aggregated = fragments;
-
     final buffer = StringBuffer();
     MarkdownSourceAttachment? lastAttachmentUsed;
     Rect? lastRect;
 
-    final nodeIndex = _buildNodeIndex(aggregated);
-    debugLog(() => 'SelectionSerializer: fragments=${aggregated.length}, nodes=${nodeIndex.length}');
+    final nodeIndex = _buildNodeIndex(fragments);
+    debugLog(() => 'SelectionSerializer: fragments=${fragments.length}, nodes=${nodeIndex.length}');
     final fullySelectedListItems =
-        _findFullySelectedListItems(nodeIndex, aggregated);
-    final tableRowGroups = _groupTableRows(nodeIndex, aggregated);
+        _findFullySelectedListItems(nodeIndex, fragments);
+    final tableRowGroups = _groupTableRows(nodeIndex, fragments);
     debugLog(() => 'SelectionSerializer: full list items=${fullySelectedListItems.length}, table rows=${tableRowGroups.length}');
 
     final emittedListItems = <CmarkNode>{};
     final emittedTableRows = <CmarkNode>{};
 
-    for (var i = 0; i < aggregated.length; i++) {
-      final fragment = aggregated[i];
+    for (var i = 0; i < fragments.length; i++) {
+      final fragment = fragments[i];
       final attachment = fragment.attachment;
       final node = attachment?.blockNode;
 
@@ -354,7 +349,7 @@ class SelectionSerializer {
       }
 
       final fragment = fragments[indices.first];
-      final blockText = _serializeEntireNode(fragment);
+      final blockText = fragment.plainText;
       if (blockText.isEmpty) {
         continue;
       }
@@ -412,7 +407,7 @@ class SelectionSerializer {
         }
 
         final fragment = fragments[indices.first];
-        final blockText = _serializeEntireNode(fragment);
+        final blockText = fragment.plainText;
         if (blockText.isEmpty) {
           continue;
         }
@@ -456,62 +451,23 @@ class SelectionSerializer {
     return '| ${cellTexts.join(' | ')} |';
   }
 
-  String _serializeEntireNode(SelectionFragment fragment) {
-    return fragment.plainText;
-  }
-
   String _serializeFragment(SelectionFragment fragment) {
     final attachment = fragment.attachment;
-    var range = fragment.range;
     final CmarkNodeType? nodeType = attachment?.blockNode?.type;
-    
-    
-
-    // For list fragments without a range, compute one from plainText
-    if (attachment != null && range == null && nodeType == CmarkNodeType.list) {
-      final model = attachment.selectionModel;
-      if (model != null) {
-        final modelText = model.plainText;
-        final trimmedPlain = fragment.plainText.trim();
-        if (trimmedPlain.isNotEmpty) {
-          final startIdx = modelText.indexOf(trimmedPlain);
-          if (startIdx >= 0) {
-            range = SelectionRange(startIdx, startIdx + trimmedPlain.length);
-            debugLog(() => 'Computed range ($startIdx, ${startIdx + trimmedPlain.length}) for list fragment');
-          }
-        }
-      }
-    }
-    
-    
-
-    if (attachment == null || range == null) {
-      // For list marker-only fragments, skip them
-      if (nodeType == CmarkNodeType.list && _listMarkerOnlyPattern.hasMatch(fragment.plainText)) {
-        debugLog(() => '_serializeFragment: skipping marker-only fragment "${fragment.plainText}"');
-        return '';
-      }
-      // Try table registry fallback
-      final tableMarkdown = TableLeafRegistry.instance.toMarkdown(fragment.plainText);
-      if (tableMarkdown != null) {
-        debugLog(() => 'Using table registry fallback for fragment');
-        return tableMarkdown;
-      }
-      return fragment.plainText;
-    }
-
-    if (nodeType == CmarkNodeType.list) {
-      return _expandListFragmentToLines(fragment, attachment, range);
-    }
 
     // Thematic breaks render invisible \r---\r text for selectability.
-    // Return clean --- with trailing newline since the thin rule widget
-    // is too close vertically to the next block for topDiff to trigger.
     if (nodeType == CmarkNodeType.thematicBreak) {
       return '---\n';
     }
 
-    // No markdown expansion. Just return the plain text the user sees.
+    // Try table registry fallback for fragments without attachments
+    if (attachment == null) {
+      final tableMarkdown = TableLeafRegistry.instance.toMarkdown(fragment.plainText);
+      if (tableMarkdown != null) {
+        return tableMarkdown;
+      }
+    }
+
     return fragment.plainText;
   }
 
@@ -534,18 +490,5 @@ class SelectionSerializer {
       }
       child = child.next;
     }
-  }
-
-  /// Regex matching list markers like "1. ", "2. ", "- ", "* ", "• ", etc.
-  /// Includes Unicode bullet (U+2022) which Flutter renders for unordered lists.
-  static final _listMarkerOnlyPattern = RegExp(r'^\s*(\d+\.|[-*+•])\s*$');
-
-  String _expandListFragmentToLines(
-    SelectionFragment fragment,
-    MarkdownSourceAttachment attachment,
-    SelectionRange? computedRange,
-  ) {
-    // No expansion. Just return what was selected.
-    return fragment.plainText;
   }
 }

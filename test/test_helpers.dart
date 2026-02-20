@@ -1,6 +1,5 @@
 import 'package:cmark_gfm_widget/cmark_gfm_widget.dart';
 import 'package:cmark_gfm_widget/src/render/block_renderers.dart';
-import 'package:cmark_gfm_widget/src/render/inline_renderers.dart';
 import 'package:flutter/material.dart';
 
 /// Helper to create a minimal rendering context for tests

@@ -46,7 +46,7 @@ packages:
     description:
       path: "."
       ref: HEAD
-      resolved-ref: beeac2af3c9a05a4d5e7996a9b7ccc1a140627ca
+      resolved-ref: "05f476bd33893d136197a8ce3f394373860455f6"
       url: "https://github.com/Telosnex/cmark-gfm-dart.git"
     source: git
     version: "0.1.0-dev"
@@ -91,7 +91,7 @@ packages:
     description:
       path: "."
       ref: master
-      resolved-ref: c1f051aacd6c7dfa689ba6efa8da7816af5accc0
+      resolved-ref: cd7cd68125f88aa4c5139a9be3c01258f2230927
       url: "https://github.com/Telosnex/flutter_math_fork_fork.git"
     source: git
     version: "0.7.2"
@@ -317,10 +317,10 @@ packages:
     dependency: transitive
     description:
       name: vector_graphics_compiler
-      sha256: "201e876b5d52753626af64b6359cd13ac6011b80728731428fd34bc840f71c9b"
+      sha256: "5a88dd14c0954a5398af544651c7fb51b457a2a556949bfb25369b210ef73a74"
       url: "https://pub.dev"
     source: hosted
-    version: "1.1.20"
+    version: "1.2.0"
   vector_math:
     dependency: transitive
     description:

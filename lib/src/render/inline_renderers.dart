@@ -294,10 +294,12 @@ InlineSpan _defaultInlineMathSpanBuilder(
     );
   }
 
-  child = SingleChildScrollView(
-    scrollDirection: Axis.horizontal,
-    child: child,
-  );
+  // Do NOT wrap in SingleChildScrollView here.
+  // _RenderSingleChildViewport does not implement computeDryBaseline.
+  // When this WidgetSpan appears inside a Table cell that uses
+  // IntrinsicColumnWidth, the intrinsic-dimension computation calls
+  // getDryBaseline on the WidgetSpan, which propagates through to
+  // _RenderSingleChildViewport and crashes.
 
   return WidgetSpan(
     alignment:

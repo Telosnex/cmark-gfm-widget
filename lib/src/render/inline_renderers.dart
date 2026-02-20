@@ -1,4 +1,5 @@
 import 'package:cmark_gfm/cmark_gfm.dart';
+import 'package:cmark_gfm_widget/src/render/inline_math_selectable.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter_math_fork/flutter_math.dart';
 import 'package:pixel_snap/material.dart';
@@ -305,19 +306,9 @@ InlineSpan _defaultInlineMathSpanBuilder(
     alignment:
         display ? PlaceholderAlignment.middle : PlaceholderAlignment.baseline,
     baseline: display ? null : TextBaseline.alphabetic,
-    child: Stack(
-      children: [
-        // Invisible text with LaTeX source - this gets selected/copied
-        Positioned.fill(
-          child: Text(
-            literal,
-            style: const TextStyle(color: Colors.transparent),
-            overflow: TextOverflow.clip,
-          ),
-        ),
-        // Visible Math widget - ignores pointer events
-        IgnorePointer(child: child),
-      ],
+    child: InlineMathSelectable(
+      literal: literal,
+      child: IgnorePointer(child: child),
     ),
   );
 }

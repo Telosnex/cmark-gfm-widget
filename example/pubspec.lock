@@ -46,7 +46,7 @@ packages:
     description:
       path: "."
       ref: HEAD
-      resolved-ref: "05f476bd33893d136197a8ce3f394373860455f6"
+      resolved-ref: "39f6e9abd31213a3b7183d8fba402391968c31f4"
       url: "https://github.com/Telosnex/cmark-gfm-dart.git"
     source: git
     version: "0.1.0-dev"
@@ -277,10 +277,10 @@ packages:
     dependency: transitive
     description:
       name: test_api
-      sha256: "19a78f63e83d3a61f00826d09bc2f60e191bf3504183c001262be6ac75589fb8"
+      sha256: "93167629bfc610f71560ab9312acdda4959de4df6fac7492c89ff0d3886f6636"
       url: "https://pub.dev"
     source: hosted
-    version: "0.7.8"
+    version: "0.7.9"
   tuple:
     dependency: transitive
     description:

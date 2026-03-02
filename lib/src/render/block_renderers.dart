@@ -509,6 +509,34 @@ Widget _buildTable(CmarkNode node, BlockRenderContext context) {
       rowNode = rowNode.next;
       continue;
     }
+    // Skip empty header rows (all cells have no content)
+    // GFM tables require a header row. Sometimes it is odd to the LLM to include
+    // labels on them, so it renders as empty. If the header cells are empty,
+    // skip rendering.
+    if (rowNode.tableRowData.isHeader) {
+      var allEmpty = true;
+      var checkCell = rowNode.firstChild;
+      while (checkCell != null) {
+        if (checkCell.firstChild != null) { allEmpty = false; break; }
+        checkCell = checkCell.next;
+      }
+      if (allEmpty) {
+        // Still collect column alignments from the header cells
+        var cellNode = rowNode.firstChild;
+        var columnIndex = 0;
+        while (cellNode != null) {
+          if (cellNode.type == CmarkNodeType.tableCell) {
+            if (columnAlignments.length <= columnIndex) {
+              columnAlignments.add(cellNode.tableCellData.align);
+            }
+            columnIndex++;
+          }
+          cellNode = cellNode.next;
+        }
+        rowNode = rowNode.next;
+        continue;
+      }
+    }
     TableLeafRegistry.instance.beginRow(rowNode);
     final cells = <Widget>[];
     final cellTexts = <String>[];

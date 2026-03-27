@@ -814,6 +814,16 @@ String _collectPlainText(CmarkNode node) {
   return buffer.toString();
 }
 
+/// Maps file extensions / short names that are NOT already registered as
+/// highlight.js language names or aliases to the correct language identifier.
+///
+/// For example, the highlight package registers "mm", "objc", and "obj-c"
+/// as aliases for objectivec, but does NOT register "m".
+const _extensionToLanguage = <String, String>{
+  'm': 'objectivec',
+  'h': 'objectivec',
+};
+
 String? _resolveCodeBlockLanguage(String info, CodeHighlightTheme config) {
   final trimmed = info.trim();
   if (trimmed.isEmpty) {
@@ -821,5 +831,7 @@ String? _resolveCodeBlockLanguage(String info, CodeHighlightTheme config) {
   }
   final spaceIndex = trimmed.indexOf(RegExp(r'\s'));
   final token = spaceIndex == -1 ? trimmed : trimmed.substring(0, spaceIndex);
-  return token.isEmpty ? config.defaultLanguage : token.toLowerCase();
+  if (token.isEmpty) return config.defaultLanguage;
+  final lower = token.toLowerCase();
+  return _extensionToLanguage[lower] ?? lower;
 }

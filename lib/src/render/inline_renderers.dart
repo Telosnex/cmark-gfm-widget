@@ -29,6 +29,7 @@ class InlineRenderContext {
     this.footnoteReferenceBuilder,
     this.mathInlineBuilder,
     this.onLinkTap,
+    this.renderImages = false,
   });
 
   final CmarkThemeData theme;
@@ -36,6 +37,10 @@ class InlineRenderContext {
   final FootnoteReferenceSpanBuilder? footnoteReferenceBuilder;
   final InlineMathSpanBuilder? mathInlineBuilder;
   final LinkTapHandler? onLinkTap;
+
+  /// Whether to render images. When false, images are replaced with their
+  /// alt text (or URL if no alt text is available).
+  final bool renderImages;
 }
 
 /// Renders all inline children of [parent] using [baseStyle].
@@ -143,8 +148,10 @@ InlineSpan _renderInlineNode(
     case CmarkNodeType.image:
       final alt = _collectPlainText(node) ?? node.linkData.title;
       final url = node.linkData.url;
-      if (url.isEmpty) {
-        return TextSpan(text: alt, style: baseStyle);
+      if (url.isEmpty || !context.renderImages) {
+        final label = alt.isNotEmpty ? alt : url;
+        final display = label.isEmpty ? '[image]' : '[image: $label]';
+        return TextSpan(text: display, style: baseStyle);
       }
       return WidgetSpan(
         alignment: PlaceholderAlignment.middle,

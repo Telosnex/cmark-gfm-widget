@@ -20,6 +20,7 @@ class RenderOptions {
     this.mathOptions = const MathRenderOptions(),
     this.leadingSpans = const [],
     this.onLinkTap,
+    this.renderImages = false,
   });
 
   final bool selectable;
@@ -31,6 +32,10 @@ class RenderOptions {
   final MathRenderOptions mathOptions;
   /// Optional tap handler for links (Markdown links).
   final LinkTapHandler? onLinkTap;
+
+  /// Whether to render images. When false, images are replaced with their
+  /// alt text (or URL if no alt text is available). Defaults to true.
+  final bool renderImages;
   
   /// Optional leading spans to prepend to the first text block.
   final List<InlineSpan> leadingSpans;
@@ -79,6 +84,7 @@ class RenderPipeline {
       footnoteReferenceBuilder: options.footnoteReferenceBuilder,
       mathInlineBuilder: options.mathOptions.inlineBuilder,
       onLinkTap: options.onLinkTap,
+      renderImages: options.renderImages,
     );
     final blockContext = BlockRenderContext(
       theme: theme,

@@ -23,6 +23,7 @@ class CmarkMarkdownColumn extends StatefulWidget {
     this.parserOptions = const CmarkParserOptions(enableMath: true),
     this.onSelectionChanged,
     this.leadingSpans = const [],
+    this.renderImages = false,
   }) : assert(
          (data != null) ^ (snapshot != null),
          'Provide either data or snapshot.',
@@ -57,6 +58,10 @@ class CmarkMarkdownColumn extends StatefulWidget {
 
   /// Optional leading spans to prepend to the first text block.
   final List<InlineSpan> leadingSpans;
+
+  /// Whether to render images. When false, images are replaced with their
+  /// alt text (or URL if no alt text is available). Defaults to true.
+  final bool renderImages;
 
   @override
   State<CmarkMarkdownColumn> createState() => _CmarkMarkdownColumnState();
@@ -155,6 +160,7 @@ class _CmarkMarkdownColumnState extends State<CmarkMarkdownColumn> {
       selectable: widget.selectable,
       textScaleFactor: textScale,
       leadingSpans: widget.leadingSpans,
+      renderImages: widget.renderImages,
     );
 
     final children = _pipeline.buildWidgets(snapshot, theme, options);
@@ -196,6 +202,7 @@ class SelectableCmarkMarkdownColumn extends StatelessWidget {
     this.parserOptions = const CmarkParserOptions(enableMath: true),
     this.onSelectionChanged,
     this.leadingSpans = const [],
+    this.renderImages = false,
   });
 
   final String? data;
@@ -207,6 +214,10 @@ class SelectableCmarkMarkdownColumn extends StatelessWidget {
   final CmarkParserOptions parserOptions;
   final void Function(SelectedContent?)? onSelectionChanged;
   final List<InlineSpan> leadingSpans;
+
+  /// Whether to render images. When false, images are replaced with their
+  /// alt text (or URL if no alt text is available). Defaults to true.
+  final bool renderImages;
 
   @override
   Widget build(BuildContext context) {
@@ -221,6 +232,7 @@ class SelectableCmarkMarkdownColumn extends StatelessWidget {
       parserOptions: parserOptions,
       onSelectionChanged: onSelectionChanged,
       leadingSpans: leadingSpans,
+      renderImages: renderImages,
     );
   }
 }

@@ -14,6 +14,7 @@ import '../widgets/source_aware_widget.dart';
 import '../selection/leaf_text_registry.dart';
 import '../selection/markdown_selectable_list.dart';
 import 'inline_renderers.dart';
+import 'math_parser_settings.dart';
 import 'render_pipeline.dart';
 
 /// Controls whether to wrap paragraphs and lists in custom [SelectionContainer]s
@@ -756,6 +757,7 @@ Widget _defaultMathBlockBuilder(
     literal,
     mathStyle: MathStyle.display,
     textStyle: context.theme.paragraphTextStyle,
+    settings: cmarkMathParserSettings,
     onErrorFallback: (error) => Text(
       literal,
       style: context.theme.paragraphTextStyle,

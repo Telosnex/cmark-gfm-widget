@@ -5,6 +5,7 @@ import 'package:flutter_math_fork/flutter_math.dart';
 import 'package:pixel_snap/material.dart';
 
 import '../theme/cmark_theme.dart';
+import 'math_parser_settings.dart';
 
 /// Context object passed to inline renderers.
 typedef FootnoteReferenceSpanBuilder = InlineSpan? Function(
@@ -129,7 +130,7 @@ InlineSpan _renderInlineNode(
       );
 
       // Wrap in WidgetSpan + GestureDetector for tap handling, passing a
-      // recognizer to TextSpan would require managing the recognizer's 
+      // recognizer to TextSpan would require managing the recognizer's
       // lifecycle. SelectableText.rich would make the URL text not selectable
       // and not tappable on mobile.
       return WidgetSpan(
@@ -291,6 +292,7 @@ InlineSpan _defaultInlineMathSpanBuilder(
     literal,
     mathStyle: display ? MathStyle.display : MathStyle.text,
     textStyle: baseStyle,
+    settings: cmarkMathParserSettings,
     onErrorFallback: (error) => Text(literal, style: baseStyle),
   );
 

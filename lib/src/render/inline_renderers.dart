@@ -75,13 +75,16 @@ InlineSpan _renderInlineNode(
     case CmarkNodeType.code:
       final theme = context.theme;
       final merged = baseStyle.merge(theme.codeSpanTextStyle);
-      // Keep the surrounding typography metrics (font size/height) so inline
-      // code inside headings or other custom styles doesn't drop back to the
-      // default body size when the theme supplies explicit values. We then
-      // apply the theme-provided scale factor to slightly shrink the text.
-      double? resolvedFontSize = baseStyle.fontSize ?? merged.fontSize;
-      if (resolvedFontSize != null) {
-        resolvedFontSize *= theme.inlineCodeFontScale;
+      // If the theme provides an explicit inline-code size, respect it. When
+      // it does not, preserve the surrounding typography size and apply the
+      // legacy scale factor for backwards compatibility.
+      final explicitCodeFontSize = theme.codeSpanTextStyle.fontSize;
+      double? resolvedFontSize = explicitCodeFontSize;
+      if (resolvedFontSize == null) {
+        resolvedFontSize = baseStyle.fontSize ?? merged.fontSize;
+        if (resolvedFontSize != null) {
+          resolvedFontSize *= theme.inlineCodeFontScale;
+        }
       }
       final restored = merged.copyWith(
         fontSize: resolvedFontSize,

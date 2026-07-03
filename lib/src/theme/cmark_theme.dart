@@ -1,5 +1,5 @@
 import 'package:pixel_snap/material.dart';
-import 'package:flutter_highlight/themes/a11y-dark.dart' as highlight_theme;
+import 'a11y_dark_theme.dart' as highlight_theme;
 
 /// Configuration for syntax highlighting in code blocks.
 class CodeHighlightTheme {

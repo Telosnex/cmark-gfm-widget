@@ -355,7 +355,7 @@ Widget _buildCodeBlock(CmarkNode node, BlockRenderContext context) {
   // Therefore, Highlight cannot auto-detect the language.
   // Therefore, we use the language from `node.codeData.info` here, and only
   // ask highlight to auto-detect if we cannot determine a language.
-  final textSpan = _highlightAdapter.build(
+  final highlighted = _highlightAdapter.buildLines(
     code: literal,
     baseStyle: context.theme.codeBlockTextStyle,
     theme: highlightConfig.theme,
@@ -368,26 +368,48 @@ Widget _buildCodeBlock(CmarkNode node, BlockRenderContext context) {
     tabSize: highlightConfig.tabSize,
   );
 
-  final child = context.selectable
-      ? Text.rich(
-          textSpan,
-          softWrap: false,
-          textScaler: TextScaler.linear(context.textScaleFactor),
-        )
-      : RichText(
-          text: textSpan,
-          softWrap: false,
-          textScaler: TextScaler.linear(context.textScaleFactor),
+  // One widget per line, instead of one paragraph for the whole block.
+  // Line spans are identical instances across streaming appends (see
+  // [HighlightAdapter]), so RenderParagraph skips layout for unchanged lines
+  // and streaming a code block costs O(1) per chunk instead of O(lines).
+  final textScaler = TextScaler.linear(context.textScaleFactor);
+  final lineWidgets = <Widget>[];
+  for (final line in highlighted.lines) {
+    Widget lineWidget = context.selectable
+        ? Text.rich(line, softWrap: false, textScaler: textScaler)
+        : RichText(text: line, softWrap: false, textScaler: textScaler);
+    if (context.selectable) {
+      // Each line gets its own attachment instance (same block node) so the
+      // selection serializer treats lines as distinct fragments and joins
+      // them with newlines instead of deduplicating them.
+      lineWidget = SourceAwareWidget(
+        attachment: MarkdownSourceAttachment(blockNode: node),
+        child: lineWidget,
+      );
+    }
+    lineWidgets.add(lineWidget);
+  }
+
+  final child = lineWidgets.length == 1
+      ? lineWidgets.first
+      : Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: lineWidgets,
         );
 
   // If we wrap in a [SingleChildScrollView], its impossible for clients to
   // do things like have the codeblock in a container that applys a "fade"
   // effect at the edges. Therefore, we do not do that here.
-  Widget result = Container(
-    padding: context.theme.codeBlockPadding,
-    margin: context.theme.blockSpacing,
-    color: context.theme.codeBlockBackgroundColor,
-    child: child,
+  //
+  // RepaintBoundary keeps per-chunk streaming repaints from repainting
+  // everything around the code block (and vice versa).
+  Widget result = RepaintBoundary(
+    child: Container(
+      padding: context.theme.codeBlockPadding,
+      margin: context.theme.blockSpacing,
+      color: context.theme.codeBlockBackgroundColor,
+      child: child,
+    ),
   );
 
   // Let client wrap with additional UI (e.g., copy button)

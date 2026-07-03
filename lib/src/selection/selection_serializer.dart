@@ -348,8 +348,7 @@ class SelectionSerializer {
         continue;
       }
 
-      final fragment = fragments[indices.first];
-      final blockText = fragment.plainText;
+      final blockText = _blockText(block, indices, fragments);
       if (blockText.isEmpty) {
         continue;
       }
@@ -362,6 +361,20 @@ class SelectionSerializer {
     }
 
     return buffer.toString();
+  }
+
+  /// Combines the fragments belonging to one block. Code blocks render one
+  /// selectable per line, so their fragments are joined with newlines; other
+  /// blocks render a single paragraph, so the first fragment carries the text.
+  String _blockText(
+    CmarkNode block,
+    List<int> indices,
+    List<SelectionFragment> fragments,
+  ) {
+    if (block.type == CmarkNodeType.codeBlock && indices.length > 1) {
+      return indices.map((index) => fragments[index].plainText).join('\n');
+    }
+    return fragments[indices.first].plainText;
   }
 
   String _serializeNestedList(
@@ -406,8 +419,7 @@ class SelectionSerializer {
           continue;
         }
 
-        final fragment = fragments[indices.first];
-        final blockText = fragment.plainText;
+        final blockText = _blockText(block, indices, fragments);
         if (blockText.isEmpty) {
           continue;
         }

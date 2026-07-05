@@ -303,9 +303,14 @@ Widget _buildTextualBlock(
       : textSpan;
 
   // Use pixel_snap's Text.rich for both selectable and non-selectable
-  // SelectableRegion (from SelectionArea) makes it selectable automatically
+  // SelectableRegion (from SelectionArea) makes it selectable automatically.
+  // Force paragraph strut metrics so code-only lines do not let the smaller
+  // monospace run determine the line box while mixed prose/code lines use the
+  // full body font metrics. Keeping every textual block on the paragraph style's
+  // line box makes inline code align consistently across list items.
   final widget = Text.rich(
     effectiveSpan,
+    strutStyle: StrutStyle.fromTextStyle(style, forceStrutHeight: true),
     textScaler: TextScaler.linear(context.textScaleFactor),
   );
 

@@ -20,6 +20,7 @@ import 'package:vector_math/vector_math_64.dart';
 
 import '../widgets/source_markdown_registry.dart';
 import '../selection/leaf_text_registry.dart';
+import '../selection/markdown_selection_model.dart';
 import '../selection/selection_serializer.dart';
 // Examples can assume:
 // late GlobalKey key;
@@ -285,14 +286,17 @@ class SelectableRegion extends StatefulWidget {
     required final VoidCallback onSelectAll,
     required final VoidCallback? onShare,
   }) {
-    final bool canCopy = selectionGeometry.status == SelectionStatus.uncollapsed;
+    final bool canCopy =
+        selectionGeometry.status == SelectionStatus.uncollapsed;
     final bool canSelectAll = selectionGeometry.hasContent;
     final bool platformCanShare = switch (defaultTargetPlatform) {
-      TargetPlatform.android => selectionGeometry.status == SelectionStatus.uncollapsed,
+      TargetPlatform.android =>
+        selectionGeometry.status == SelectionStatus.uncollapsed,
       TargetPlatform.macOS ||
       TargetPlatform.fuchsia ||
       TargetPlatform.linux ||
-      TargetPlatform.windows => false,
+      TargetPlatform.windows =>
+        false,
       // functionality requires some changes on the engine side because, on iPad,
       // it needs an anchor for the popup.
       // See: https://github.com/flutter/flutter/issues/141775.
@@ -301,19 +305,25 @@ class SelectableRegion extends StatefulWidget {
     final bool canShare = onShare != null && platformCanShare;
 
     // On Android, the share button is before the select all button.
-    final bool showShareBeforeSelectAll = defaultTargetPlatform == TargetPlatform.android;
+    final bool showShareBeforeSelectAll =
+        defaultTargetPlatform == TargetPlatform.android;
 
     // Determine which buttons will appear so that the order and total number is
     // known. A button's position in the menu can slightly affect its
     // appearance.
     return <ContextMenuButtonItem>[
-      if (canCopy) ContextMenuButtonItem(onPressed: onCopy, type: ContextMenuButtonType.copy),
+      if (canCopy)
+        ContextMenuButtonItem(
+            onPressed: onCopy, type: ContextMenuButtonType.copy),
       if (canShare && showShareBeforeSelectAll)
-        ContextMenuButtonItem(onPressed: onShare, type: ContextMenuButtonType.share),
+        ContextMenuButtonItem(
+            onPressed: onShare, type: ContextMenuButtonType.share),
       if (canSelectAll)
-        ContextMenuButtonItem(onPressed: onSelectAll, type: ContextMenuButtonType.selectAll),
+        ContextMenuButtonItem(
+            onPressed: onSelectAll, type: ContextMenuButtonType.selectAll),
       if (canShare && !showShareBeforeSelectAll)
-        ContextMenuButtonItem(onPressed: onShare, type: ContextMenuButtonType.share),
+        ContextMenuButtonItem(
+            onPressed: onShare, type: ContextMenuButtonType.share),
     ];
   }
 
@@ -329,7 +339,8 @@ class SelectableRegionState extends State<SelectableRegion>
     SelectAllTextIntent: _makeOverridable(_SelectAllAction(this)),
     CopySelectionTextIntent: _makeOverridable(_CopySelectionAction(this)),
     ExtendSelectionToNextWordBoundaryOrCaretLocationIntent: _makeOverridable(
-      _GranularlyExtendSelectionAction<ExtendSelectionToNextWordBoundaryOrCaretLocationIntent>(
+      _GranularlyExtendSelectionAction<
+          ExtendSelectionToNextWordBoundaryOrCaretLocationIntent>(
         this,
         granularity: TextGranularity.word,
       ),
@@ -353,7 +364,8 @@ class SelectableRegionState extends State<SelectableRegion>
       ),
     ),
     ExtendSelectionToNextWordBoundaryIntent: _makeOverridable(
-      _GranularlyExtendCaretSelectionAction<ExtendSelectionToNextWordBoundaryIntent>(
+      _GranularlyExtendCaretSelectionAction<
+          ExtendSelectionToNextWordBoundaryIntent>(
         this,
         granularity: TextGranularity.word,
       ),
@@ -365,10 +377,12 @@ class SelectableRegionState extends State<SelectableRegion>
       ),
     ),
     ExtendSelectionVerticallyToAdjacentLineIntent: _makeOverridable(
-      _DirectionallyExtendCaretSelectionAction<ExtendSelectionVerticallyToAdjacentLineIntent>(this),
+      _DirectionallyExtendCaretSelectionAction<
+          ExtendSelectionVerticallyToAdjacentLineIntent>(this),
     ),
     ExtendSelectionToDocumentBoundaryIntent: _makeOverridable(
-      _GranularlyExtendCaretSelectionAction<ExtendSelectionToDocumentBoundaryIntent>(
+      _GranularlyExtendCaretSelectionAction<
+          ExtendSelectionToDocumentBoundaryIntent>(
         this,
         granularity: TextGranularity.document,
       ),
@@ -381,7 +395,8 @@ class SelectableRegionState extends State<SelectableRegion>
   final LayerLink _startHandleLayerLink = LayerLink();
   final LayerLink _endHandleLayerLink = LayerLink();
   final LayerLink _toolbarLayerLink = LayerLink();
-  final StaticSelectionContainerDelegate _selectionDelegate = StaticSelectionContainerDelegate();
+  final StaticSelectionContainerDelegate _selectionDelegate =
+      StaticSelectionContainerDelegate();
   // there should only ever be one selectable, which is the SelectionContainer.
   Selectable? _selectable;
 
@@ -407,7 +422,8 @@ class SelectableRegionState extends State<SelectableRegion>
   // The focus node to use if the widget didn't supply one.
   FocusNode? _localFocusNode;
   FocusNode get _focusNode =>
-      widget.focusNode ?? (_localFocusNode ??= FocusNode(debugLabel: 'SelectableRegion'));
+      widget.focusNode ??
+      (_localFocusNode ??= FocusNode(debugLabel: 'SelectableRegion'));
 
   /// Notifies its listeners when the selection state in this [SelectableRegion] changes.
   final _SelectableRegionSelectionStatusNotifier _selectionStatusNotifier =
@@ -418,17 +434,37 @@ class SelectableRegionState extends State<SelectableRegion>
   void initState() {
     super.initState();
     _focusNode.addListener(_handleFocusChanged);
+    if (!kReleaseMode) {
+      HardwareKeyboard.instance.addHandler(_debugCopyKeyDiagnostic);
+    }
     _initMouseGestureRecognizer();
     _initTouchGestureRecognizer();
     // Right clicks.
     _gestureRecognizers[TapGestureRecognizer] =
         GestureRecognizerFactoryWithHandlers<TapGestureRecognizer>(
-          () => TapGestureRecognizer(debugOwner: this),
-          (TapGestureRecognizer instance) {
-            instance.onSecondaryTapDown = _handleRightClickDown;
-          },
-        );
+      () => TapGestureRecognizer(debugOwner: this),
+      (TapGestureRecognizer instance) {
+        instance.onSecondaryTapDown = _handleRightClickDown;
+      },
+    );
     _initProcessTextActions();
+  }
+
+  /// Diagnostic-only hardware keyboard tap. Never consumes events.
+  ///
+  /// If ⌘C is pressed and this log does NOT appear, macOS consumed the key
+  /// equivalent natively (e.g. the Edit ▸ Copy menu item / first responder
+  /// `copy:`) and the event never entered the Flutter framework at all.
+  bool _debugCopyKeyDiagnostic(KeyEvent event) {
+    if (event is KeyDownEvent &&
+        event.logicalKey == LogicalKeyboardKey.keyC &&
+        HardwareKeyboard.instance.isMetaPressed) {
+      copyDiagnosticLog(() =>
+          'hardware ⌘C reached Flutter: regionHasFocus=${_focusNode.hasFocus} '
+          'selectionStatus=${_selectionDelegate.value.status} '
+          'primaryFocus=${FocusManager.instance.primaryFocus?.debugLabel ?? FocusManager.instance.primaryFocus}');
+    }
+    return false;
   }
 
   /// Query the engine to initialize the list of text processing actions to show
@@ -485,7 +521,8 @@ class SelectableRegionState extends State<SelectableRegion>
   }
 
   Action<T> _makeOverridable<T extends Intent>(Action<T> defaultAction) {
-    return Action<T>.overridable(context: context, defaultAction: defaultAction);
+    return Action<T>.overridable(
+        context: context, defaultAction: defaultAction);
   }
 
   void _handleFocusChanged() {
@@ -493,7 +530,8 @@ class SelectableRegionState extends State<SelectableRegion>
       if (kIsWeb) {
         PlatformSelectableRegionContextMenu.detach(_selectionDelegate);
       }
-      if (SchedulerBinding.instance.lifecycleState == AppLifecycleState.resumed) {
+      if (SchedulerBinding.instance.lifecycleState ==
+          AppLifecycleState.resumed) {
         // We should only clear the selection when this SelectableRegion loses
         // focus while the application is currently running. It is possible
         // that the application is not currently running, for example on desktop
@@ -502,7 +540,8 @@ class SelectableRegionState extends State<SelectableRegion>
         // case we want to retain the selection so it remains when we return to
         // the Flutter application.
         clearSelection();
-        _selectionStatusNotifier.value = SelectableRegionSelectionStatus.changing;
+        _selectionStatusNotifier.value =
+            SelectableRegionSelectionStatus.changing;
         _finalizeSelectableRegionStatus();
       }
     }
@@ -515,7 +554,8 @@ class SelectableRegionState extends State<SelectableRegion>
     final SelectionGeometry geometry = _selectionDelegate.value;
     final TextSelection selection = switch (geometry.status) {
       SelectionStatus.uncollapsed ||
-      SelectionStatus.collapsed => const TextSelection(baseOffset: 0, extentOffset: 1),
+      SelectionStatus.collapsed =>
+        const TextSelection(baseOffset: 0, extentOffset: 1),
       SelectionStatus.none => const TextSelection.collapsed(offset: 1),
     };
     // rationale: was in flutter code when copied on 25-11-12.
@@ -557,7 +597,8 @@ class SelectableRegionState extends State<SelectableRegion>
   }
 
   void _finalizeSelectableRegionStatus() {
-    if (_selectionStatusNotifier.value != SelectableRegionSelectionStatus.changing) {
+    if (_selectionStatusNotifier.value !=
+        SelectableRegionSelectionStatus.changing) {
       // Don't finalize the selection again if it is not currently changing.
       return;
     }
@@ -576,7 +617,8 @@ class SelectableRegionState extends State<SelectableRegion>
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
       case TargetPlatform.fuchsia:
-        if (_lastPointerDeviceKind != null && _lastPointerDeviceKind != PointerDeviceKind.mouse) {
+        if (_lastPointerDeviceKind != null &&
+            _lastPointerDeviceKind != PointerDeviceKind.mouse) {
           // When the pointer device kind is not precise like a mouse, native
           // Android resets the tap count at 2. For example, this is so the
           // selection can collapse on the third tap.
@@ -591,8 +633,8 @@ class SelectableRegionState extends State<SelectableRegion>
         return rawCount <= maxConsecutiveTap
             ? rawCount
             : (rawCount % maxConsecutiveTap == 0
-                  ? maxConsecutiveTap
-                  : rawCount % maxConsecutiveTap);
+                ? maxConsecutiveTap
+                : rawCount % maxConsecutiveTap);
       case TargetPlatform.linux:
         // From observation, these platforms reset their tap count to 0 when
         // the number of consecutive taps exceeds the max consecutive tap supported.
@@ -603,8 +645,8 @@ class SelectableRegionState extends State<SelectableRegion>
         return rawCount <= maxConsecutiveTap
             ? rawCount
             : (rawCount % maxConsecutiveTap == 0
-                  ? maxConsecutiveTap
-                  : rawCount % maxConsecutiveTap);
+                ? maxConsecutiveTap
+                : rawCount % maxConsecutiveTap);
       case TargetPlatform.iOS:
       case TargetPlatform.macOS:
       case TargetPlatform.windows:
@@ -619,28 +661,31 @@ class SelectableRegionState extends State<SelectableRegion>
   void _initMouseGestureRecognizer() {
     _gestureRecognizers[TapAndPanGestureRecognizer] =
         GestureRecognizerFactoryWithHandlers<TapAndPanGestureRecognizer>(
-          () => TapAndPanGestureRecognizer(
-            debugOwner: this,
-            supportedDevices: <PointerDeviceKind>{PointerDeviceKind.mouse},
-          ),
-          (TapAndPanGestureRecognizer instance) {
-            instance
-              ..onTapTrackStart = _onTapTrackStart
-              ..onTapTrackReset = _onTapTrackReset
-              ..onTapDown = _startNewMouseSelectionGesture
-              ..onTapUp = _handleMouseTapUp
-              ..onDragStart = _handleMouseDragStart
-              ..onDragUpdate = _handleMouseDragUpdate
-              ..onDragEnd = _handleMouseDragEnd
-              ..onCancel = clearSelection
-              ..dragStartBehavior = DragStartBehavior.down;
-          },
-        );
+      () => TapAndPanGestureRecognizer(
+        debugOwner: this,
+        supportedDevices: <PointerDeviceKind>{PointerDeviceKind.mouse},
+      ),
+      (TapAndPanGestureRecognizer instance) {
+        instance
+          ..onTapTrackStart = _onTapTrackStart
+          ..onTapTrackReset = _onTapTrackReset
+          ..onTapDown = _startNewMouseSelectionGesture
+          ..onTapUp = _handleMouseTapUp
+          ..onDragStart = _handleMouseDragStart
+          ..onDragUpdate = _handleMouseDragUpdate
+          ..onDragEnd = _handleMouseDragEnd
+          ..onCancel = clearSelection
+          ..dragStartBehavior = DragStartBehavior.down;
+      },
+    );
   }
 
   void _onTapTrackStart() {
     _isShiftPressed = HardwareKeyboard.instance.logicalKeysPressed.intersection(
-      <LogicalKeyboardKey>{LogicalKeyboardKey.shiftLeft, LogicalKeyboardKey.shiftRight},
+      <LogicalKeyboardKey>{
+        LogicalKeyboardKey.shiftLeft,
+        LogicalKeyboardKey.shiftRight
+      },
     ).isNotEmpty;
   }
 
@@ -653,51 +698,53 @@ class SelectableRegionState extends State<SelectableRegion>
     // like PointerDeviceKind.touch so [SelectableRegion] gestures do not conflict with
     // ancestor Scrollable gestures in common scenarios like a vertically scrolling list view.
     _gestureRecognizers[TapAndHorizontalDragGestureRecognizer] =
-        GestureRecognizerFactoryWithHandlers<TapAndHorizontalDragGestureRecognizer>(
-          () => TapAndHorizontalDragGestureRecognizer(
-            debugOwner: this,
-            supportedDevices: PointerDeviceKind.values.where((PointerDeviceKind device) {
-              return device != PointerDeviceKind.mouse;
-            }).toSet(),
-          ),
-          (TapAndHorizontalDragGestureRecognizer instance) {
-            instance
-              // iOS does not provide a device specific touch slop
-              // unlike Android (~8.0), so the touch slop for a [Scrollable]
-              // always default to kTouchSlop which is 18.0. When
-              // [SelectableRegion] is the child of a horizontal
-              // scrollable that means the [SelectableRegion] will
-              // always win the gesture arena when competing with
-              // the ancestor scrollable because they both have
-              // the same touch slop threshold and the child receives
-              // the [PointerEvent] first. To avoid this conflict
-              // and ensure a smooth scrolling experience, on
-              // iOS the [TapAndHorizontalDragGestureRecognizer]
-              // will wait for all other gestures to lose before
-              // declaring victory.
-              ..eagerVictoryOnDrag = defaultTargetPlatform != TargetPlatform.iOS
-              ..onTapDown = _startNewMouseSelectionGesture
-              ..onTapUp = _handleMouseTapUp
-              ..onDragStart = _handleMouseDragStart
-              ..onDragUpdate = _handleMouseDragUpdate
-              ..onDragEnd = _handleMouseDragEnd
-              ..onCancel = clearSelection
-              ..dragStartBehavior = DragStartBehavior.down;
-          },
-        );
+        GestureRecognizerFactoryWithHandlers<
+            TapAndHorizontalDragGestureRecognizer>(
+      () => TapAndHorizontalDragGestureRecognizer(
+        debugOwner: this,
+        supportedDevices:
+            PointerDeviceKind.values.where((PointerDeviceKind device) {
+          return device != PointerDeviceKind.mouse;
+        }).toSet(),
+      ),
+      (TapAndHorizontalDragGestureRecognizer instance) {
+        instance
+          // iOS does not provide a device specific touch slop
+          // unlike Android (~8.0), so the touch slop for a [Scrollable]
+          // always default to kTouchSlop which is 18.0. When
+          // [SelectableRegion] is the child of a horizontal
+          // scrollable that means the [SelectableRegion] will
+          // always win the gesture arena when competing with
+          // the ancestor scrollable because they both have
+          // the same touch slop threshold and the child receives
+          // the [PointerEvent] first. To avoid this conflict
+          // and ensure a smooth scrolling experience, on
+          // iOS the [TapAndHorizontalDragGestureRecognizer]
+          // will wait for all other gestures to lose before
+          // declaring victory.
+          ..eagerVictoryOnDrag = defaultTargetPlatform != TargetPlatform.iOS
+          ..onTapDown = _startNewMouseSelectionGesture
+          ..onTapUp = _handleMouseTapUp
+          ..onDragStart = _handleMouseDragStart
+          ..onDragUpdate = _handleMouseDragUpdate
+          ..onDragEnd = _handleMouseDragEnd
+          ..onCancel = clearSelection
+          ..dragStartBehavior = DragStartBehavior.down;
+      },
+    );
     _gestureRecognizers[LongPressGestureRecognizer] =
         GestureRecognizerFactoryWithHandlers<LongPressGestureRecognizer>(
-          () => LongPressGestureRecognizer(
-            debugOwner: this,
-            supportedDevices: _kLongPressSelectionDevices,
-          ),
-          (LongPressGestureRecognizer instance) {
-            instance
-              ..onLongPressStart = _handleTouchLongPressStart
-              ..onLongPressMoveUpdate = _handleTouchLongPressMoveUpdate
-              ..onLongPressEnd = _handleTouchLongPressEnd;
-          },
-        );
+      () => LongPressGestureRecognizer(
+        debugOwner: this,
+        supportedDevices: _kLongPressSelectionDevices,
+      ),
+      (LongPressGestureRecognizer instance) {
+        instance
+          ..onLongPressStart = _handleTouchLongPressStart
+          ..onLongPressMoveUpdate = _handleTouchLongPressMoveUpdate
+          ..onLongPressEnd = _handleTouchLongPressEnd;
+      },
+    );
   }
 
   Offset? _doubleTapOffset;
@@ -721,28 +768,34 @@ class SelectableRegionState extends State<SelectableRegion>
             // pressed and the start of the selection has not been initialized.
             // In this case we fallback on collapsing the selection to first
             // initialize the selection.
-            final bool isShiftPressedValid =
-                _isShiftPressed && _selectionDelegate.value.startSelectionPoint != null;
+            final bool isShiftPressedValid = _isShiftPressed &&
+                _selectionDelegate.value.startSelectionPoint != null;
             if (isShiftPressedValid) {
               _selectEndTo(offset: details.globalPosition);
-              _selectionStatusNotifier.value = SelectableRegionSelectionStatus.changing;
+              _selectionStatusNotifier.value =
+                  SelectableRegionSelectionStatus.changing;
               break;
             }
             clearSelection();
             _collapseSelectionAt(offset: details.globalPosition);
-            _selectionStatusNotifier.value = SelectableRegionSelectionStatus.changing;
+            _selectionStatusNotifier.value =
+                SelectableRegionSelectionStatus.changing;
         }
       case 2:
         switch (defaultTargetPlatform) {
           case TargetPlatform.iOS:
-            if (kIsWeb && details.kind != null && !_isPrecisePointerDevice(details.kind!)) {
+            if (kIsWeb &&
+                details.kind != null &&
+                !_isPrecisePointerDevice(details.kind!)) {
               // Double tap on iOS web triggers when a drag begins after the double tap.
               _doubleTapOffset = details.globalPosition;
               break;
             }
             _selectWordAt(offset: details.globalPosition);
-            _selectionStatusNotifier.value = SelectableRegionSelectionStatus.changing;
-            if (details.kind != null && !_isPrecisePointerDevice(details.kind!)) {
+            _selectionStatusNotifier.value =
+                SelectableRegionSelectionStatus.changing;
+            if (details.kind != null &&
+                !_isPrecisePointerDevice(details.kind!)) {
               _showHandles();
             }
           case TargetPlatform.android:
@@ -751,24 +804,28 @@ class SelectableRegionState extends State<SelectableRegion>
           case TargetPlatform.linux:
           case TargetPlatform.windows:
             _selectWordAt(offset: details.globalPosition);
-            _selectionStatusNotifier.value = SelectableRegionSelectionStatus.changing;
+            _selectionStatusNotifier.value =
+                SelectableRegionSelectionStatus.changing;
         }
       case 3:
         switch (defaultTargetPlatform) {
           case TargetPlatform.android:
           case TargetPlatform.fuchsia:
           case TargetPlatform.iOS:
-            if (details.kind != null && _isPrecisePointerDevice(details.kind!)) {
+            if (details.kind != null &&
+                _isPrecisePointerDevice(details.kind!)) {
               // Triple tap on static text is only supported on mobile
               // platforms using a precise pointer device.
               _selectParagraphAt(offset: details.globalPosition);
-              _selectionStatusNotifier.value = SelectableRegionSelectionStatus.changing;
+              _selectionStatusNotifier.value =
+                  SelectableRegionSelectionStatus.changing;
             }
           case TargetPlatform.macOS:
           case TargetPlatform.linux:
           case TargetPlatform.windows:
             _selectParagraphAt(offset: details.globalPosition);
-            _selectionStatusNotifier.value = SelectableRegionSelectionStatus.changing;
+            _selectionStatusNotifier.value =
+                SelectableRegionSelectionStatus.changing;
         }
     }
     _updateSelectedContentIfNeeded();
@@ -782,7 +839,8 @@ class SelectableRegionState extends State<SelectableRegion>
           return;
         }
         _selectStartTo(offset: details.globalPosition);
-        _selectionStatusNotifier.value = SelectableRegionSelectionStatus.changing;
+        _selectionStatusNotifier.value =
+            SelectableRegionSelectionStatus.changing;
     }
     _updateSelectedContentIfNeeded();
   }
@@ -795,20 +853,24 @@ class SelectableRegionState extends State<SelectableRegion>
           return;
         }
         _selectEndTo(offset: details.globalPosition, continuous: true);
-        _selectionStatusNotifier.value = SelectableRegionSelectionStatus.changing;
+        _selectionStatusNotifier.value =
+            SelectableRegionSelectionStatus.changing;
       case 2:
         switch (defaultTargetPlatform) {
           case TargetPlatform.android:
           case TargetPlatform.fuchsia:
             // Double tap + drag is only supported on Android when using a precise
             // pointer device or when not on the web.
-            if (!kIsWeb || details.kind != null && _isPrecisePointerDevice(details.kind!)) {
+            if (!kIsWeb ||
+                details.kind != null &&
+                    _isPrecisePointerDevice(details.kind!)) {
               _selectEndTo(
                 offset: details.globalPosition,
                 continuous: true,
                 textGranularity: TextGranularity.word,
               );
-              _selectionStatusNotifier.value = SelectableRegionSelectionStatus.changing;
+              _selectionStatusNotifier.value =
+                  SelectableRegionSelectionStatus.changing;
             }
           case TargetPlatform.iOS:
             if (kIsWeb &&
@@ -825,8 +887,10 @@ class SelectableRegionState extends State<SelectableRegion>
               continuous: true,
               textGranularity: TextGranularity.word,
             );
-            _selectionStatusNotifier.value = SelectableRegionSelectionStatus.changing;
-            if (details.kind != null && !_isPrecisePointerDevice(details.kind!)) {
+            _selectionStatusNotifier.value =
+                SelectableRegionSelectionStatus.changing;
+            if (details.kind != null &&
+                !_isPrecisePointerDevice(details.kind!)) {
               _showHandles();
             }
           case TargetPlatform.macOS:
@@ -837,7 +901,8 @@ class SelectableRegionState extends State<SelectableRegion>
               continuous: true,
               textGranularity: TextGranularity.word,
             );
-            _selectionStatusNotifier.value = SelectableRegionSelectionStatus.changing;
+            _selectionStatusNotifier.value =
+                SelectableRegionSelectionStatus.changing;
         }
       case 3:
         switch (defaultTargetPlatform) {
@@ -846,13 +911,15 @@ class SelectableRegionState extends State<SelectableRegion>
           case TargetPlatform.iOS:
             // Triple tap + drag is only supported on mobile devices when using
             // a precise pointer device.
-            if (details.kind != null && _isPrecisePointerDevice(details.kind!)) {
+            if (details.kind != null &&
+                _isPrecisePointerDevice(details.kind!)) {
               _selectEndTo(
                 offset: details.globalPosition,
                 continuous: true,
                 textGranularity: TextGranularity.paragraph,
               );
-              _selectionStatusNotifier.value = SelectableRegionSelectionStatus.changing;
+              _selectionStatusNotifier.value =
+                  SelectableRegionSelectionStatus.changing;
             }
           case TargetPlatform.macOS:
           case TargetPlatform.linux:
@@ -862,7 +929,8 @@ class SelectableRegionState extends State<SelectableRegion>
               continuous: true,
               textGranularity: TextGranularity.paragraph,
             );
-            _selectionStatusNotifier.value = SelectableRegionSelectionStatus.changing;
+            _selectionStatusNotifier.value =
+                SelectableRegionSelectionStatus.changing;
         }
     }
     _updateSelectedContentIfNeeded();
@@ -870,7 +938,8 @@ class SelectableRegionState extends State<SelectableRegion>
 
   void _handleMouseDragEnd(TapDragEndDetails details) {
     assert(_lastPointerDeviceKind != null);
-    final bool isPointerPrecise = _isPrecisePointerDevice(_lastPointerDeviceKind!);
+    final bool isPointerPrecise =
+        _isPrecisePointerDevice(_lastPointerDeviceKind!);
     // On mobile platforms like android, fuchsia, and iOS, a drag gesture will
     // only show the selection overlay when the drag has finished and the pointer
     // device kind is not precise, for example at the end of a double tap + drag
@@ -903,7 +972,8 @@ class SelectableRegionState extends State<SelectableRegion>
         _positionIsOnActiveSelection(globalPosition: details.globalPosition)) {
       // On iOS when the tap occurs on the previous selection, instead of
       // moving the selection, the context menu will be toggled.
-      final bool toolbarIsVisible = _selectionOverlay?.toolbarIsVisible ?? false;
+      final bool toolbarIsVisible =
+          _selectionOverlay?.toolbarIsVisible ?? false;
       if (toolbarIsVisible) {
         hideToolbar(false);
       } else {
@@ -919,7 +989,8 @@ class SelectableRegionState extends State<SelectableRegion>
           case TargetPlatform.iOS:
             hideToolbar();
             _collapseSelectionAt(offset: details.globalPosition);
-            _selectionStatusNotifier.value = SelectableRegionSelectionStatus.changing;
+            _selectionStatusNotifier.value =
+                SelectableRegionSelectionStatus.changing;
           case TargetPlatform.macOS:
           case TargetPlatform.linux:
           case TargetPlatform.windows:
@@ -984,7 +1055,8 @@ class SelectableRegionState extends State<SelectableRegion>
   }
 
   void _handleTouchLongPressMoveUpdate(LongPressMoveUpdateDetails details) {
-    _selectEndTo(offset: details.globalPosition, textGranularity: TextGranularity.word);
+    _selectEndTo(
+        offset: details.globalPosition, textGranularity: TextGranularity.word);
     _selectionStatusNotifier.value = SelectableRegionSelectionStatus.changing;
     _updateSelectedContentIfNeeded();
   }
@@ -1002,7 +1074,8 @@ class SelectableRegionState extends State<SelectableRegion>
   bool _positionIsOnActiveSelection({required Offset globalPosition}) {
     for (final Rect selectionRect in _selectionDelegate.value.selectionRects) {
       final Matrix4 transform = _selectable!.getTransformTo(null);
-      final Rect globalRect = MatrixUtils.transformRect(transform, selectionRect);
+      final Rect globalRect =
+          MatrixUtils.transformRect(transform, selectionRect);
       if (globalRect.contains(globalPosition)) {
         return true;
       }
@@ -1011,7 +1084,8 @@ class SelectableRegionState extends State<SelectableRegion>
   }
 
   void _handleRightClickDown(TapDownDetails details) {
-    final Offset? previousSecondaryTapDownPosition = _lastSecondaryTapDownPosition;
+    final Offset? previousSecondaryTapDownPosition =
+        _lastSecondaryTapDownPosition;
     final bool toolbarIsVisible = _selectionOverlay?.toolbarIsVisible ?? false;
     _lastSecondaryTapDownPosition = details.globalPosition;
     _focusNode.requestFocus();
@@ -1021,7 +1095,8 @@ class SelectableRegionState extends State<SelectableRegion>
       case TargetPlatform.windows:
         // If _lastSecondaryTapDownPosition is within the current selection then
         // keep the current selection, if not then collapse it.
-        final bool lastSecondaryTapDownPositionWasOnActiveSelection = _positionIsOnActiveSelection(
+        final bool lastSecondaryTapDownPositionWasOnActiveSelection =
+            _positionIsOnActiveSelection(
           globalPosition: details.globalPosition,
         );
         if (lastSecondaryTapDownPositionWasOnActiveSelection) {
@@ -1037,7 +1112,8 @@ class SelectableRegionState extends State<SelectableRegion>
       case TargetPlatform.iOS:
         _selectWordAt(offset: _lastSecondaryTapDownPosition!);
       case TargetPlatform.macOS:
-        if (previousSecondaryTapDownPosition == _lastSecondaryTapDownPosition && toolbarIsVisible) {
+        if (previousSecondaryTapDownPosition == _lastSecondaryTapDownPosition &&
+            toolbarIsVisible) {
           hideToolbar();
           return;
         }
@@ -1049,7 +1125,8 @@ class SelectableRegionState extends State<SelectableRegion>
         }
         // If _lastSecondaryTapDownPosition is within the current selection then
         // keep the current selection, if not then collapse it.
-        final bool lastSecondaryTapDownPositionWasOnActiveSelection = _positionIsOnActiveSelection(
+        final bool lastSecondaryTapDownPositionWasOnActiveSelection =
+            _positionIsOnActiveSelection(
           globalPosition: details.globalPosition,
         );
         if (!lastSecondaryTapDownPositionWasOnActiveSelection) {
@@ -1105,9 +1182,9 @@ class SelectableRegionState extends State<SelectableRegion>
   }
 
   void _onAnyDragEnd(DragEndDetails details) {
-    final bool draggingHandles =
-        _selectionOverlay != null &&
-        (_selectionOverlay!.isDraggingStartHandle || _selectionOverlay!.isDraggingEndHandle);
+    final bool draggingHandles = _selectionOverlay != null &&
+        (_selectionOverlay!.isDraggingStartHandle ||
+            _selectionOverlay!.isDraggingEndHandle);
     if (widget.selectionControls is! TextSelectionHandleControls) {
       if (!draggingHandles) {
         _selectionOverlay!.hideMagnifier();
@@ -1183,27 +1260,31 @@ class SelectableRegionState extends State<SelectableRegion>
   void _handleSelectionStartHandleDragStart(DragStartDetails details) {
     assert(_selectionDelegate.value.startSelectionPoint != null);
 
-    final Offset localPosition = _selectionDelegate.value.startSelectionPoint!.localPosition;
+    final Offset localPosition =
+        _selectionDelegate.value.startSelectionPoint!.localPosition;
     final Matrix4 globalTransform = _selectable!.getTransformTo(null);
-    _selectionStartHandleDragPosition = MatrixUtils.transformPoint(globalTransform, localPosition);
+    _selectionStartHandleDragPosition =
+        MatrixUtils.transformPoint(globalTransform, localPosition);
 
     _selectionOverlay!.showMagnifier(
-      _buildInfoForMagnifier(details.globalPosition, _selectionDelegate.value.startSelectionPoint!),
+      _buildInfoForMagnifier(details.globalPosition,
+          _selectionDelegate.value.startSelectionPoint!),
     );
     _updateSelectedContentIfNeeded();
   }
 
   void _handleSelectionStartHandleDragUpdate(DragUpdateDetails details) {
-    _selectionStartHandleDragPosition = _selectionStartHandleDragPosition + details.delta;
+    _selectionStartHandleDragPosition =
+        _selectionStartHandleDragPosition + details.delta;
     // The value corresponds to the paint origin of the selection handle.
     // Offset it to the center of the line to make it feel more natural.
-    _selectionStartPosition =
-        _selectionStartHandleDragPosition -
+    _selectionStartPosition = _selectionStartHandleDragPosition -
         Offset(0, _selectionDelegate.value.startSelectionPoint!.lineHeight / 2);
     _triggerSelectionStartEdgeUpdate();
 
     _selectionOverlay!.updateMagnifier(
-      _buildInfoForMagnifier(details.globalPosition, _selectionDelegate.value.startSelectionPoint!),
+      _buildInfoForMagnifier(details.globalPosition,
+          _selectionDelegate.value.startSelectionPoint!),
     );
     _updateSelectedContentIfNeeded();
     _selectionStatusNotifier.value = SelectableRegionSelectionStatus.changing;
@@ -1211,27 +1292,31 @@ class SelectableRegionState extends State<SelectableRegion>
 
   void _handleSelectionEndHandleDragStart(DragStartDetails details) {
     assert(_selectionDelegate.value.endSelectionPoint != null);
-    final Offset localPosition = _selectionDelegate.value.endSelectionPoint!.localPosition;
+    final Offset localPosition =
+        _selectionDelegate.value.endSelectionPoint!.localPosition;
     final Matrix4 globalTransform = _selectable!.getTransformTo(null);
-    _selectionEndHandleDragPosition = MatrixUtils.transformPoint(globalTransform, localPosition);
+    _selectionEndHandleDragPosition =
+        MatrixUtils.transformPoint(globalTransform, localPosition);
 
     _selectionOverlay!.showMagnifier(
-      _buildInfoForMagnifier(details.globalPosition, _selectionDelegate.value.endSelectionPoint!),
+      _buildInfoForMagnifier(
+          details.globalPosition, _selectionDelegate.value.endSelectionPoint!),
     );
     _updateSelectedContentIfNeeded();
   }
 
   void _handleSelectionEndHandleDragUpdate(DragUpdateDetails details) {
-    _selectionEndHandleDragPosition = _selectionEndHandleDragPosition + details.delta;
+    _selectionEndHandleDragPosition =
+        _selectionEndHandleDragPosition + details.delta;
     // The value corresponds to the paint origin of the selection handle.
     // Offset it to the center of the line to make it feel more natural.
-    _selectionEndPosition =
-        _selectionEndHandleDragPosition -
+    _selectionEndPosition = _selectionEndHandleDragPosition -
         Offset(0, _selectionDelegate.value.endSelectionPoint!.lineHeight / 2);
     _triggerSelectionEndEdgeUpdate();
 
     _selectionOverlay!.updateMagnifier(
-      _buildInfoForMagnifier(details.globalPosition, _selectionDelegate.value.endSelectionPoint!),
+      _buildInfoForMagnifier(
+          details.globalPosition, _selectionDelegate.value.endSelectionPoint!),
     );
     _updateSelectedContentIfNeeded();
     _selectionStatusNotifier.value = SelectableRegionSelectionStatus.changing;
@@ -1241,8 +1326,10 @@ class SelectableRegionState extends State<SelectableRegion>
     Offset globalGesturePosition,
     SelectionPoint selectionPoint,
   ) {
-    final Vector3 globalTransform = _selectable!.getTransformTo(null).getTranslation();
-    final Offset globalTransformAsOffset = Offset(globalTransform.x, globalTransform.y);
+    final Vector3 globalTransform =
+        _selectable!.getTransformTo(null).getTranslation();
+    final Offset globalTransformAsOffset =
+        Offset(globalTransform.x, globalTransform.y);
     final Offset globalSelectionPointPosition =
         selectionPoint.localPosition + globalTransformAsOffset;
     final Rect caretRect = Rect.fromLTWH(
@@ -1405,7 +1492,8 @@ class SelectableRegionState extends State<SelectableRegion>
   }) {
     if (!continuous) {
       _selectable?.dispatchSelectionEvent(
-        SelectionEdgeUpdateEvent.forEnd(globalPosition: offset, granularity: textGranularity),
+        SelectionEdgeUpdateEvent.forEnd(
+            globalPosition: offset, granularity: textGranularity),
       );
       return;
     }
@@ -1452,7 +1540,8 @@ class SelectableRegionState extends State<SelectableRegion>
   }) {
     if (!continuous) {
       _selectable?.dispatchSelectionEvent(
-        SelectionEdgeUpdateEvent.forStart(globalPosition: offset, granularity: textGranularity),
+        SelectionEdgeUpdateEvent.forStart(
+            globalPosition: offset, granularity: textGranularity),
       );
       return;
     }
@@ -1503,7 +1592,8 @@ class SelectableRegionState extends State<SelectableRegion>
   void _selectWordAt({required Offset offset}) {
     // There may be other selection ongoing.
     _finalizeSelection();
-    _selectable?.dispatchSelectionEvent(SelectWordSelectionEvent(globalPosition: offset));
+    _selectable?.dispatchSelectionEvent(
+        SelectWordSelectionEvent(globalPosition: offset));
   }
 
   /// Selects the entire paragraph at the `offset` location.
@@ -1527,7 +1617,8 @@ class SelectableRegionState extends State<SelectableRegion>
   void _selectParagraphAt({required Offset offset}) {
     // There may be other selection ongoing.
     _finalizeSelection();
-    _selectable?.dispatchSelectionEvent(SelectParagraphSelectionEvent(globalPosition: offset));
+    _selectable?.dispatchSelectionEvent(
+        SelectParagraphSelectionEvent(globalPosition: offset));
   }
 
   /// Stops any ongoing selection updates.
@@ -1554,11 +1645,26 @@ class SelectableRegionState extends State<SelectableRegion>
   }
 
   Future<void> _copy() async {
-    final SelectedContent? data = _selectable?.getSelectedContent();
-    if (data == null) {
-      return;
+    // copyDiagnosticLog is intentionally always-on (debug builds): Cmd+C
+    // failures are silent, so we need breadcrumbs to tell apart
+    // "key never reached the region" vs "serialization failed" vs
+    // "copied empty text".
+    try {
+      final SelectedContent? data = _selectable?.getSelectedContent();
+      if (data == null) {
+        copyDiagnosticLog(() => '_copy: getSelectedContent returned null '
+            '(selectable=${_selectable != null})');
+        return;
+      }
+      copyDiagnosticLog(() => '_copy: copying ${data.plainText.length} chars');
+      if (data.plainText.isEmpty) {
+        copyDiagnosticLog(() => '_copy: WARNING copied empty string');
+      }
+      await Clipboard.setData(ClipboardData(text: data.plainText));
+    } catch (e, st) {
+      copyDiagnosticLog(() => '_copy: THREW $e\n$st');
+      rethrow;
     }
-    await Clipboard.setData(ClipboardData(text: data.plainText));
   }
 
   Future<void> _share() async {
@@ -1636,7 +1742,8 @@ class SelectableRegionState extends State<SelectableRegion>
     if (!_selectionDelegate.value.hasSelection) {
       return;
     }
-    final bool adjustingSelectionExtend = _determineIsAdjustingSelectionEnd(forward);
+    final bool adjustingSelectionExtend =
+        _determineIsAdjustingSelectionEnd(forward);
     final SelectionPoint baseLinePoint = adjustingSelectionExtend
         ? _selectionDelegate.value.endSelectionPoint!
         : _selectionDelegate.value.startSelectionPoint!;
@@ -1688,7 +1795,8 @@ class SelectableRegionState extends State<SelectableRegion>
           case TargetPlatform.android:
           case TargetPlatform.fuchsia:
             clearSelection();
-            _selectionStatusNotifier.value = SelectableRegionSelectionStatus.changing;
+            _selectionStatusNotifier.value =
+                SelectableRegionSelectionStatus.changing;
             _finalizeSelectableRegionStatus();
           case TargetPlatform.iOS:
             hideToolbar(false);
@@ -1719,7 +1827,8 @@ class SelectableRegionState extends State<SelectableRegion>
           case TargetPlatform.android:
           case TargetPlatform.fuchsia:
             clearSelection();
-            _selectionStatusNotifier.value = SelectableRegionSelectionStatus.changing;
+            _selectionStatusNotifier.value =
+                SelectableRegionSelectionStatus.changing;
             _finalizeSelectableRegionStatus();
           case TargetPlatform.iOS:
             hideToolbar(false);
@@ -1746,7 +1855,8 @@ class SelectableRegionState extends State<SelectableRegion>
           onPressed: () async {
             final String selectedText = data.plainText;
             if (selectedText.isNotEmpty) {
-              await _processTextService.processTextAction(action.id, selectedText, true);
+              await _processTextService.processTextAction(
+                  action.id, selectedText, true);
               hideToolbar();
             }
           },
@@ -1771,7 +1881,8 @@ class SelectableRegionState extends State<SelectableRegion>
     final SelectionPoint? start = _selectionDelegate.value.startSelectionPoint;
     final SelectionPoint? end = _selectionDelegate.value.endSelectionPoint;
     late List<TextSelectionPoint> points;
-    final Offset startLocalPosition = start?.localPosition ?? end!.localPosition;
+    final Offset startLocalPosition =
+        start?.localPosition ?? end!.localPosition;
     final Offset endLocalPosition = end?.localPosition ?? start!.localPosition;
     if (startLocalPosition.dy > endLocalPosition.dy) {
       points = <TextSelectionPoint>[
@@ -1864,7 +1975,8 @@ class SelectableRegionState extends State<SelectableRegion>
     'This feature was deprecated after v3.3.0-0.5.pre.',
   )
   @override
-  void userUpdateTextEditingValue(TextEditingValue value, SelectionChangedCause cause) {
+  void userUpdateTextEditingValue(
+      TextEditingValue value, SelectionChangedCause cause) {
     /* SelectableRegion maintains its own state */
   }
 
@@ -1898,6 +2010,9 @@ class SelectableRegionState extends State<SelectableRegion>
   @protected
   @override
   void dispose() {
+    if (!kReleaseMode) {
+      HardwareKeyboard.instance.removeHandler(_debugCopyKeyDiagnostic);
+    }
     _selectable?.removeListener(_updateSelectionStatus);
     _selectable?.pushHandleLayers(null, null);
     _selectionDelegate.dispose();
@@ -1919,7 +2034,8 @@ class SelectableRegionState extends State<SelectableRegion>
     assert(debugCheckHasOverlay(context));
     Widget result = SelectableRegionSelectionStatusScope._(
       selectionStatusNotifier: _selectionStatusNotifier,
-      child: SelectionContainer(registrar: this, delegate: _selectionDelegate, child: widget.child),
+      child: SelectionContainer(
+          registrar: this, delegate: _selectionDelegate, child: widget.child),
     );
     if (kIsWeb) {
       result = PlatformSelectableRegionContextMenu(child: result);
@@ -1992,6 +2108,8 @@ class _CopySelectionAction extends _NonOverrideAction<CopySelectionTextIntent> {
 
   @override
   void invokeAction(CopySelectionTextIntent intent, [BuildContext? context]) {
+    copyDiagnosticLog(() => '_CopySelectionAction invoked '
+        '(primaryFocus=${FocusManager.instance.primaryFocus?.debugLabel})');
     state._copy();
   }
 }
@@ -2009,9 +2127,10 @@ class _GranularlyExtendSelectionAction<T extends DirectionalTextEditingIntent>
   }
 }
 
-class _GranularlyExtendCaretSelectionAction<T extends DirectionalCaretMovementIntent>
-    extends _NonOverrideAction<T> {
-  _GranularlyExtendCaretSelectionAction(this.state, {required this.granularity});
+class _GranularlyExtendCaretSelectionAction<
+    T extends DirectionalCaretMovementIntent> extends _NonOverrideAction<T> {
+  _GranularlyExtendCaretSelectionAction(this.state,
+      {required this.granularity});
 
   final SelectableRegionState state;
   final TextGranularity granularity;
@@ -2026,8 +2145,8 @@ class _GranularlyExtendCaretSelectionAction<T extends DirectionalCaretMovementIn
   }
 }
 
-class _DirectionallyExtendCaretSelectionAction<T extends DirectionalCaretMovementIntent>
-    extends _NonOverrideAction<T> {
+class _DirectionallyExtendCaretSelectionAction<
+    T extends DirectionalCaretMovementIntent> extends _NonOverrideAction<T> {
   _DirectionallyExtendCaretSelectionAction(this.state);
 
   final SelectableRegionState state;
@@ -2064,7 +2183,8 @@ class _DirectionallyExtendCaretSelectionAction<T extends DirectionalCaretMovemen
 ///
 ///  * [MultiSelectableSelectionContainerDelegate], for the class that provides
 ///  the main implementation details of this [SelectionContainerDelegate].
-class StaticSelectionContainerDelegate extends MultiSelectableSelectionContainerDelegate {
+class StaticSelectionContainerDelegate
+    extends MultiSelectableSelectionContainerDelegate {
   /// The set of [Selectable]s that have received start events.
   final Set<Selectable> _hasReceivedStartEvent = <Selectable>{};
 
@@ -2092,7 +2212,8 @@ class StaticSelectionContainerDelegate extends MultiSelectableSelectionContainer
   /// Subclasses should call [clearInternalSelectionStateForSelectable] to clean up any state
   /// added by this method, for example when removing a [Selectable] from this delegate.
   @protected
-  void didReceiveSelectionEventFor({required Selectable selectable, bool? forEnd}) {
+  void didReceiveSelectionEventFor(
+      {required Selectable selectable, bool? forEnd}) {
     switch (forEnd) {
       case true:
         _hasReceivedEndEvent.add(selectable);
@@ -2150,7 +2271,7 @@ class StaticSelectionContainerDelegate extends MultiSelectableSelectionContainer
       final Selectable start = selectables[currentSelectionStartIndex];
       final Offset localStartEdge =
           start.value.startSelectionPoint!.localPosition +
-          Offset(0, -start.value.startSelectionPoint!.lineHeight / 2);
+              Offset(0, -start.value.startSelectionPoint!.lineHeight / 2);
       updateLastSelectionEdgeLocation(
         globalSelectionEdgeLocation: MatrixUtils.transformPoint(
           start.getTransformTo(null),
@@ -2162,8 +2283,7 @@ class StaticSelectionContainerDelegate extends MultiSelectableSelectionContainer
     if (currentSelectionEndIndex != -1 &&
         selectables[currentSelectionEndIndex].value.hasSelection) {
       final Selectable end = selectables[currentSelectionEndIndex];
-      final Offset localEndEdge =
-          end.value.endSelectionPoint!.localPosition +
+      final Offset localEndEdge = end.value.endSelectionPoint!.localPosition +
           Offset(0, -end.value.endSelectionPoint!.lineHeight / 2);
       updateLastSelectionEdgeLocation(
         globalSelectionEdgeLocation: MatrixUtils.transformPoint(
@@ -2250,7 +2370,8 @@ class StaticSelectionContainerDelegate extends MultiSelectableSelectionContainer
   }
 
   @override
-  SelectionResult dispatchSelectionEventToChild(Selectable selectable, SelectionEvent event) {
+  SelectionResult dispatchSelectionEventToChild(
+      Selectable selectable, SelectionEvent event) {
     switch (event.type) {
       case SelectionEventType.startEdgeUpdate:
         didReceiveSelectionEventFor(selectable: selectable, forEnd: false);
@@ -2284,8 +2405,10 @@ class StaticSelectionContainerDelegate extends MultiSelectableSelectionContainer
   ///   to a [Selectable] child.
   @override
   void ensureChildUpdated(Selectable selectable) {
-    if (_lastEndEdgeUpdateGlobalPosition != null && _hasReceivedEndEvent.add(selectable)) {
-      final SelectionEdgeUpdateEvent synthesizedEvent = SelectionEdgeUpdateEvent.forEnd(
+    if (_lastEndEdgeUpdateGlobalPosition != null &&
+        _hasReceivedEndEvent.add(selectable)) {
+      final SelectionEdgeUpdateEvent synthesizedEvent =
+          SelectionEdgeUpdateEvent.forEnd(
         globalPosition: _lastEndEdgeUpdateGlobalPosition!,
       );
       if (currentSelectionEndIndex == -1) {
@@ -2293,8 +2416,10 @@ class StaticSelectionContainerDelegate extends MultiSelectableSelectionContainer
       }
       selectable.dispatchSelectionEvent(synthesizedEvent);
     }
-    if (_lastStartEdgeUpdateGlobalPosition != null && _hasReceivedStartEvent.add(selectable)) {
-      final SelectionEdgeUpdateEvent synthesizedEvent = SelectionEdgeUpdateEvent.forStart(
+    if (_lastStartEdgeUpdateGlobalPosition != null &&
+        _hasReceivedStartEvent.add(selectable)) {
+      final SelectionEdgeUpdateEvent synthesizedEvent =
+          SelectionEdgeUpdateEvent.forStart(
         globalPosition: _lastStartEdgeUpdateGlobalPosition!,
       );
       if (currentSelectionStartIndex == -1) {
@@ -2308,12 +2433,14 @@ class StaticSelectionContainerDelegate extends MultiSelectableSelectionContainer
   void didChangeSelectables() {
     if (_lastEndEdgeUpdateGlobalPosition != null) {
       handleSelectionEdgeUpdate(
-        SelectionEdgeUpdateEvent.forEnd(globalPosition: _lastEndEdgeUpdateGlobalPosition!),
+        SelectionEdgeUpdateEvent.forEnd(
+            globalPosition: _lastEndEdgeUpdateGlobalPosition!),
       );
     }
     if (_lastStartEdgeUpdateGlobalPosition != null) {
       handleSelectionEdgeUpdate(
-        SelectionEdgeUpdateEvent.forStart(globalPosition: _lastStartEdgeUpdateGlobalPosition!),
+        SelectionEdgeUpdateEvent.forStart(
+            globalPosition: _lastStartEdgeUpdateGlobalPosition!),
       );
     }
     final Set<Selectable> selectableSet = selectables.toSet();
@@ -2333,8 +2460,8 @@ class StaticSelectionContainerDelegate extends MultiSelectableSelectionContainer
 /// Updates are optimized by tracking which [Selectable]s reside on the edges of
 /// a selection. Subclasses should implement [ensureChildUpdated] to describe
 /// how a [Selectable] should behave when added to a selection.
-abstract class MultiSelectableSelectionContainerDelegate extends SelectionContainerDelegate
-    with ChangeNotifier {
+abstract class MultiSelectableSelectionContainerDelegate
+    extends SelectionContainerDelegate with ChangeNotifier {
   /// Creates an instance of [MultiSelectableSelectionContainerDelegate].
   MultiSelectableSelectionContainerDelegate() {
     if (kFlutterMemoryAllocationsEnabled) {
@@ -2414,7 +2541,8 @@ abstract class MultiSelectableSelectionContainerDelegate extends SelectionContai
         _updateSelectables();
       }
 
-      if (SchedulerBinding.instance.schedulerPhase == SchedulerPhase.postFrameCallbacks) {
+      if (SchedulerBinding.instance.schedulerPhase ==
+          SchedulerPhase.postFrameCallbacks) {
         // A new task can be scheduled as a result of running the scheduled task
         // from another MultiSelectableSelectionContainerDelegate. This can
         // happen if nesting two SelectionContainers. The selectable can be
@@ -2438,7 +2566,8 @@ abstract class MultiSelectableSelectionContainerDelegate extends SelectionContai
   }
 
   void _flushAdditions() {
-    final List<Selectable> mergingSelectables = _additions.toList()..sort(compareOrder);
+    final List<Selectable> mergingSelectables = _additions.toList()
+      ..sort(compareOrder);
     final List<Selectable> existingSelectables = selectables;
     selectables = <Selectable>[];
     int mergingIndex = 0;
@@ -2446,10 +2575,12 @@ abstract class MultiSelectableSelectionContainerDelegate extends SelectionContai
     int selectionStartIndex = currentSelectionStartIndex;
     int selectionEndIndex = currentSelectionEndIndex;
     // Merge two sorted lists.
-    while (mergingIndex < mergingSelectables.length || existingIndex < existingSelectables.length) {
+    while (mergingIndex < mergingSelectables.length ||
+        existingIndex < existingSelectables.length) {
       if (mergingIndex >= mergingSelectables.length ||
           (existingIndex < existingSelectables.length &&
-              compareOrder(existingSelectables[existingIndex], mergingSelectables[mergingIndex]) <
+              compareOrder(existingSelectables[existingIndex],
+                      mergingSelectables[mergingIndex]) <
                   0)) {
         if (existingIndex == currentSelectionStartIndex) {
           selectionStartIndex = selectables.length;
@@ -2465,8 +2596,10 @@ abstract class MultiSelectableSelectionContainerDelegate extends SelectionContai
       // If the merging selectable falls in the selection range, their selection
       // needs to be updated.
       final Selectable mergingSelectable = mergingSelectables[mergingIndex];
-      if (existingIndex < max(currentSelectionStartIndex, currentSelectionEndIndex) &&
-          existingIndex > min(currentSelectionStartIndex, currentSelectionEndIndex)) {
+      if (existingIndex <
+              max(currentSelectionStartIndex, currentSelectionEndIndex) &&
+          existingIndex >
+              min(currentSelectionStartIndex, currentSelectionEndIndex)) {
         ensureChildUpdated(mergingSelectable);
       }
       mergingSelectable.addListener(_handleSelectableGeometryChange);
@@ -2478,7 +2611,8 @@ abstract class MultiSelectableSelectionContainerDelegate extends SelectionContai
           existingIndex == existingSelectables.length &&
           selectables.length == existingIndex + mergingIndex,
     );
-    assert(selectionStartIndex >= -1 || selectionStartIndex < selectables.length);
+    assert(
+        selectionStartIndex >= -1 || selectionStartIndex < selectables.length);
     assert(selectionEndIndex >= -1 || selectionEndIndex < selectables.length);
     // selection indices should not be set to -1 unless they originally were.
     assert((currentSelectionStartIndex == -1) == (selectionStartIndex == -1));
@@ -2489,7 +2623,8 @@ abstract class MultiSelectableSelectionContainerDelegate extends SelectionContai
   }
 
   void _removeSelectable(Selectable selectable) {
-    assert(selectables.contains(selectable), 'The selectable is not in this registrar.');
+    assert(selectables.contains(selectable),
+        'The selectable is not in this registrar.');
     final int index = selectables.indexOf(selectable);
     selectables.removeAt(index);
     if (index <= currentSelectionEndIndex) {
@@ -2541,8 +2676,10 @@ abstract class MultiSelectableSelectionContainerDelegate extends SelectionContai
   Comparator<Selectable> get compareOrder => _compareScreenOrder;
 
   static int _compareScreenOrder(Selectable a, Selectable b) {
-    final Rect rectA = MatrixUtils.transformRect(a.getTransformTo(null), _getBoundingBox(a));
-    final Rect rectB = MatrixUtils.transformRect(b.getTransformTo(null), _getBoundingBox(b));
+    final Rect rectA =
+        MatrixUtils.transformRect(a.getTransformTo(null), _getBoundingBox(a));
+    final Rect rectB =
+        MatrixUtils.transformRect(b.getTransformTo(null), _getBoundingBox(b));
     final int result = _compareVertically(rectA, rectB);
     if (result != 0) {
       return result;
@@ -2575,11 +2712,13 @@ abstract class MultiSelectableSelectionContainerDelegate extends SelectionContai
   /// Returns positive if a is lower, negative if a is higher.
   static int _compareHorizontally(Rect a, Rect b) {
     // a encloses b.
-    if (a.left - b.left < precisionErrorTolerance && a.right - b.right > -precisionErrorTolerance) {
+    if (a.left - b.left < precisionErrorTolerance &&
+        a.right - b.right > -precisionErrorTolerance) {
       return -1;
     }
     // b encloses a.
-    if (b.left - a.left < precisionErrorTolerance && b.right - a.right > -precisionErrorTolerance) {
+    if (b.left - a.left < precisionErrorTolerance &&
+        b.right - a.right > -precisionErrorTolerance) {
       return 1;
     }
     if ((a.left - b.left).abs() > precisionErrorTolerance) {
@@ -2601,13 +2740,17 @@ abstract class MultiSelectableSelectionContainerDelegate extends SelectionContai
   /// Gets the combined [SelectionGeometry] for child [Selectable]s.
   @protected
   SelectionGeometry getSelectionGeometry() {
-    if (currentSelectionEndIndex == -1 || currentSelectionStartIndex == -1 || selectables.isEmpty) {
+    if (currentSelectionEndIndex == -1 ||
+        currentSelectionStartIndex == -1 ||
+        selectables.isEmpty) {
       // There is no valid selection.
-      return SelectionGeometry(status: SelectionStatus.none, hasContent: selectables.isNotEmpty);
+      return SelectionGeometry(
+          status: SelectionStatus.none, hasContent: selectables.isNotEmpty);
     }
 
     if (!_extendSelectionInProgress) {
-      currentSelectionStartIndex = _adjustSelectionIndexBasedOnSelectionGeometry(
+      currentSelectionStartIndex =
+          _adjustSelectionIndexBasedOnSelectionGeometry(
         currentSelectionStartIndex,
         currentSelectionEndIndex,
       );
@@ -2618,8 +2761,10 @@ abstract class MultiSelectableSelectionContainerDelegate extends SelectionContai
     }
 
     // Need to find the non-null start selection point.
-    SelectionGeometry startGeometry = selectables[currentSelectionStartIndex].value;
-    final bool forwardSelection = currentSelectionEndIndex >= currentSelectionStartIndex;
+    SelectionGeometry startGeometry =
+        selectables[currentSelectionStartIndex].value;
+    final bool forwardSelection =
+        currentSelectionEndIndex >= currentSelectionStartIndex;
     int startIndexWalker = currentSelectionStartIndex;
     while (startIndexWalker != currentSelectionEndIndex &&
         startGeometry.startSelectionPoint == null) {
@@ -2629,7 +2774,8 @@ abstract class MultiSelectableSelectionContainerDelegate extends SelectionContai
 
     SelectionPoint? startPoint;
     if (startGeometry.startSelectionPoint != null) {
-      final Matrix4 startTransform = getTransformFrom(selectables[startIndexWalker]);
+      final Matrix4 startTransform =
+          getTransformFrom(selectables[startIndexWalker]);
       final Offset start = MatrixUtils.transformPoint(
         startTransform,
         startGeometry.startSelectionPoint!.localPosition,
@@ -2647,13 +2793,15 @@ abstract class MultiSelectableSelectionContainerDelegate extends SelectionContai
     // Need to find the non-null end selection point.
     SelectionGeometry endGeometry = selectables[currentSelectionEndIndex].value;
     int endIndexWalker = currentSelectionEndIndex;
-    while (endIndexWalker != currentSelectionStartIndex && endGeometry.endSelectionPoint == null) {
+    while (endIndexWalker != currentSelectionStartIndex &&
+        endGeometry.endSelectionPoint == null) {
       endIndexWalker += forwardSelection ? -1 : 1;
       endGeometry = selectables[endIndexWalker].value;
     }
     SelectionPoint? endPoint;
     if (endGeometry.endSelectionPoint != null) {
-      final Matrix4 endTransform = getTransformFrom(selectables[endIndexWalker]);
+      final Matrix4 endTransform =
+          getTransformFrom(selectables[endIndexWalker]);
       final Offset end = MatrixUtils.transformPoint(
         endTransform,
         endGeometry.endSelectionPoint!.localPosition,
@@ -2674,18 +2822,20 @@ abstract class MultiSelectableSelectionContainerDelegate extends SelectionContai
     final Rect? drawableArea = hasSize
         ? Rect.fromLTWH(0, 0, containerSize.width, containerSize.height)
         : null;
-    for (int index = currentSelectionStartIndex; index <= currentSelectionEndIndex; index++) {
-      final List<Rect> currSelectableSelectionRects = selectables[index].value.selectionRects;
-      final List<Rect> selectionRectsWithinDrawableArea = currSelectableSelectionRects
-          .map((Rect selectionRect) {
-            final Matrix4 transform = getTransformFrom(selectables[index]);
-            final Rect localRect = MatrixUtils.transformRect(transform, selectionRect);
-            return drawableArea?.intersect(localRect) ?? localRect;
-          })
-          .where((Rect selectionRect) {
-            return selectionRect.isFinite && !selectionRect.isEmpty;
-          })
-          .toList();
+    for (int index = currentSelectionStartIndex;
+        index <= currentSelectionEndIndex;
+        index++) {
+      final List<Rect> currSelectableSelectionRects =
+          selectables[index].value.selectionRects;
+      final List<Rect> selectionRectsWithinDrawableArea =
+          currSelectableSelectionRects.map((Rect selectionRect) {
+        final Matrix4 transform = getTransformFrom(selectables[index]);
+        final Rect localRect =
+            MatrixUtils.transformRect(transform, selectionRect);
+        return drawableArea?.intersect(localRect) ?? localRect;
+      }).where((Rect selectionRect) {
+        return selectionRect.isFinite && !selectionRect.isEmpty;
+      }).toList();
       selectionRects.addAll(selectionRectsWithinDrawableArea);
     }
 
@@ -2693,7 +2843,9 @@ abstract class MultiSelectableSelectionContainerDelegate extends SelectionContai
       startSelectionPoint: startPoint,
       endSelectionPoint: endPoint,
       selectionRects: selectionRects,
-      status: startGeometry != endGeometry ? SelectionStatus.uncollapsed : startGeometry.status,
+      status: startGeometry != endGeometry
+          ? SelectionStatus.uncollapsed
+          : startGeometry.status,
       // Would have at least one selectable child.
       hasContent: true,
     );
@@ -2707,7 +2859,8 @@ abstract class MultiSelectableSelectionContainerDelegate extends SelectionContai
   // be point to either one.
   //
   // This method adjusts the index to point to selectable with valid selection.
-  int _adjustSelectionIndexBasedOnSelectionGeometry(int currentIndex, int towardIndex) {
+  int _adjustSelectionIndexBasedOnSelectionGeometry(
+      int currentIndex, int towardIndex) {
     final bool forward = towardIndex > currentIndex;
     while (currentIndex != towardIndex &&
         selectables[currentIndex].value.status != SelectionStatus.uncollapsed) {
@@ -2744,12 +2897,10 @@ abstract class MultiSelectableSelectionContainerDelegate extends SelectionContai
               containerSize.height,
             ).inflate(_kSelectionHandleDrawableAreaPadding)
           : null;
-      final bool hideStartHandle =
-          value.startSelectionPoint == null ||
+      final bool hideStartHandle = value.startSelectionPoint == null ||
           drawableArea == null ||
           !drawableArea.contains(value.startSelectionPoint!.localPosition);
-      final bool hideEndHandle =
-          value.endSelectionPoint == null ||
+      final bool hideEndHandle = value.endSelectionPoint == null ||
           drawableArea == null ||
           !drawableArea.contains(value.endSelectionPoint!.localPosition);
       effectiveStartHandle = hideStartHandle ? null : _startHandleLayer;
@@ -2780,7 +2931,8 @@ abstract class MultiSelectableSelectionContainerDelegate extends SelectionContai
     if (currentSelectionStartIndex == currentSelectionEndIndex) {
       // Selection edges is on the same selectable.
       _endHandleLayerOwner = _startHandleLayerOwner;
-      _startHandleLayerOwner!.pushHandleLayers(effectiveStartHandle, effectiveEndHandle);
+      _startHandleLayerOwner!
+          .pushHandleLayers(effectiveStartHandle, effectiveEndHandle);
       return;
     }
 
@@ -2791,7 +2943,10 @@ abstract class MultiSelectableSelectionContainerDelegate extends SelectionContai
 
   /// Try to find the MarkdownSourceAttachment for a selectable by walking
   /// up the render tree.
-  MarkdownSourceAttachment? _findAttachment(Selectable selectable) {
+  MarkdownSourceAttachment? _findAttachment(
+    Selectable selectable,
+    Rect globalSelectionRect,
+  ) {
     RenderObject? renderObject;
 
     if (selectable is RenderObject) {
@@ -2809,8 +2964,16 @@ abstract class MultiSelectableSelectionContainerDelegate extends SelectionContai
       }
     }
 
-    if (renderObject == null) return null;
-    return SourceMarkdownRegistry.instance.findAttachment(renderObject);
+    if (renderObject != null) {
+      final attachment =
+          SourceMarkdownRegistry.instance.findAttachment(renderObject);
+      if (attachment != null) {
+        return attachment;
+      }
+    }
+
+    return SourceMarkdownRegistry.instance
+        .findAttachmentNearRect(globalSelectionRect);
   }
 
   /// Copies the selected contents of all [Selectable]s.
@@ -2830,12 +2993,12 @@ abstract class MultiSelectableSelectionContainerDelegate extends SelectionContai
     if (selections.isEmpty) {
       return null;
     }
-    
+
     // Sort selections by position (top to bottom, then left to right)
     selections.sort((a, b) {
       const yTolerance = 2.0; // Consider within 2px as same line
       final yDiff = (a.$3.top - b.$3.top).abs();
-      
+
       if (yDiff > yTolerance) {
         // Different lines - sort by Y
         return a.$3.top.compareTo(b.$3.top);
@@ -2844,8 +3007,9 @@ abstract class MultiSelectableSelectionContainerDelegate extends SelectionContai
         return a.$3.left.compareTo(b.$3.left);
       }
     });
-    debugLog(() => '📐 Sorted selections by position (Y then X, tolerance=2px)');
-    
+    debugLog(
+        () => '📐 Sorted selections by position (Y then X, tolerance=2px)');
+
     // Build SelectionFragments for the serializer.
     // ARCHITECTURE: We used to build a string buffer here and concatenate fragments
     // directly. This broke markdown-aware copy because we had no way to preserve
@@ -2853,18 +3017,52 @@ abstract class MultiSelectableSelectionContainerDelegate extends SelectionContai
     // SelectionFragment objects with AST attachments and hand them to SelectionSerializer,
     // which knows how to reconstruct canonical markdown.
     //
-    // First pass: get attachment for each selection
+    // First pass: get attachment for each selection.
+    // In a plain MarkdownColumn the selectable is usually a leaf RenderParagraph
+    // and ancestor lookup gives a single attachment. In ConversationScreen,
+    // the outer SelectionArea can return a coarse selectable whose selected
+    // plainText spans many markdown blocks. In that case expand by selected
+    // rect into the SourceAware block rects so the serializer receives one
+    // fragment per markdown block instead of one giant plainText blob.
     final rawFragments = <(SelectedContent, Rect, MarkdownSourceAttachment?)>[];
+    final expandedAttachments = <MarkdownSourceAttachment>{};
     for (final (selectable, data, rect) in selections) {
-      final attachment = _findAttachment(selectable);
-      rawFragments.add((data, rect, attachment));
+      final attachment = _findAttachment(selectable, rect);
+      final blockNode = attachment?.blockNode;
+      final blockPlainLength = blockNode == null
+          ? 0
+          : MarkdownSelectionModel(blockNode).plainText.length;
+      final rectMatches =
+          SourceMarkdownRegistry.instance.findAttachmentsInRect(rect);
+      final shouldExpandByRect = rectMatches.length > 1 &&
+          data.plainText.length > blockPlainLength + 20;
+
+      if (shouldExpandByRect) {
+        for (final match in rectMatches) {
+          if (!expandedAttachments.add(match.attachment)) {
+            continue;
+          }
+          final node = match.attachment.blockNode;
+          final plainText = node == null
+              ? data.plainText
+              : MarkdownSelectionModel(node).plainText;
+          rawFragments.add((
+            SelectedContent(plainText: plainText),
+            match.rect,
+            match.attachment,
+          ));
+        }
+      } else {
+        rawFragments.add((data, rect, attachment));
+      }
     }
 
     // Second pass: group by attachment and aggregate.
     // For lists with multiple fragments (Flutter often splits bullets and text into
     // separate selectables), we aggregate them here so the serializer can compute
     // the correct selection range in the list's plain-text space.
-    final fragmentGroups = <MarkdownSourceAttachment?, List<(SelectedContent, Rect)>>{};
+    final fragmentGroups =
+        <MarkdownSourceAttachment?, List<(SelectedContent, Rect)>>{};
     for (final (data, rect, attachment) in rawFragments) {
       fragmentGroups.putIfAbsent(attachment, () => []).add((data, rect));
     }
@@ -2878,10 +3076,11 @@ abstract class MultiSelectableSelectionContainerDelegate extends SelectionContai
       // Emit fragments individually
       for (final (data, rect) in group) {
         final plainText = data.plainText;
-        
+
         // If no attachment but table registry has a match, use that
         if (attachment == null) {
-          final tableMarkdown = TableLeafRegistry.instance.toMarkdown(plainText);
+          final tableMarkdown =
+              TableLeafRegistry.instance.toMarkdown(plainText);
           if (tableMarkdown != null) {
             debugLog(() => '📦 Using TableLeafRegistry for fragment');
             // Build synthetic fragment that serializer will recognize
@@ -2894,7 +3093,7 @@ abstract class MultiSelectableSelectionContainerDelegate extends SelectionContai
             continue;
           }
         }
-        
+
         fragments.add(SelectionFragment(
           rect: rect,
           plainText: plainText,
@@ -2903,11 +3102,20 @@ abstract class MultiSelectableSelectionContainerDelegate extends SelectionContai
         ));
       }
     }
-    
+
     // Use SelectionSerializer to handle all the smart copy logic
+    copyDiagnosticLog(() {
+      final withAttachment =
+          fragments.where((f) => f.attachment != null).length;
+      final types = fragments
+          .map((f) => f.attachment?.blockNode?.type.name ?? 'NULL')
+          .join(',');
+      return 'serialize: fragments=${fragments.length} '
+          'withAttachment=$withAttachment types=[$types]';
+    });
     final serializer = SelectionSerializer();
     final markdown = serializer.serialize(fragments);
-    
+
     debugLog(() => '📋 Final clipboard text length: ${markdown.length}');
     return SelectedContent(plainText: markdown);
   }
@@ -2917,8 +3125,8 @@ abstract class MultiSelectableSelectionContainerDelegate extends SelectionContai
   /// This value is derived from the [Selectable.contentLength] of each [Selectable]
   /// managed by this delegate.
   @override
-  int get contentLength =>
-      selectables.fold<int>(0, (int sum, Selectable selectable) => sum + selectable.contentLength);
+  int get contentLength => selectables.fold<int>(
+      0, (int sum, Selectable selectable) => sum + selectable.contentLength);
 
   /// This method calculates a local [SelectedContentRange] based on the list
   /// of [selections] that are accumulated from the [Selectable] children under this
@@ -2932,14 +3140,15 @@ abstract class MultiSelectableSelectionContainerDelegate extends SelectionContai
     int startOffset = 0;
     int endOffset = 0;
     bool foundStart = false;
-    bool forwardSelection = currentSelectionEndIndex >= currentSelectionStartIndex;
+    bool forwardSelection =
+        currentSelectionEndIndex >= currentSelectionStartIndex;
     if (currentSelectionEndIndex == currentSelectionStartIndex) {
       // Determining selection direction is inaccurate if currentSelectionStartIndex == currentSelectionEndIndex.
       // Use the range from the selectable within the selection as the source of truth for selection direction.
       final SelectedContentRange rangeAtSelectableInSelection =
           selectables[currentSelectionStartIndex].getSelection()!;
-      forwardSelection =
-          rangeAtSelectableInSelection.endOffset >= rangeAtSelectableInSelection.startOffset;
+      forwardSelection = rangeAtSelectableInSelection.endOffset >=
+          rangeAtSelectableInSelection.startOffset;
     }
     for (int index = 0; index < selections.length; index++) {
       final _SelectionInfo selection = selections[index];
@@ -2964,7 +3173,8 @@ abstract class MultiSelectableSelectionContainerDelegate extends SelectionContai
       );
       if (!foundStart) {
         startOffset += selectionStartNormalized;
-        endOffset = startOffset + (selectionEndNormalized - selectionStartNormalized).abs();
+        endOffset = startOffset +
+            (selectionEndNormalized - selectionStartNormalized).abs();
         foundStart = true;
       } else {
         endOffset += (selectionEndNormalized - selectionStartNormalized).abs();
@@ -2989,7 +3199,10 @@ abstract class MultiSelectableSelectionContainerDelegate extends SelectionContai
   SelectedContentRange? getSelection() {
     final List<_SelectionInfo> selections = <_SelectionInfo>[
       for (final Selectable selectable in selectables)
-        (contentLength: selectable.contentLength, range: selectable.getSelection()),
+        (
+          contentLength: selectable.contentLength,
+          range: selectable.getSelection()
+        ),
     ];
     return _calculateLocalRange(selections);
   }
@@ -3012,18 +3225,21 @@ abstract class MultiSelectableSelectionContainerDelegate extends SelectionContai
       selectables
           .where((Selectable target) => target != selectables[skipIndex])
           .forEach(
-            (Selectable target) =>
-                dispatchSelectionEventToChild(target, const ClearSelectionEvent()),
+            (Selectable target) => dispatchSelectionEventToChild(
+                target, const ClearSelectionEvent()),
           );
       return;
     }
-    final int skipStart = min(currentSelectionStartIndex, currentSelectionEndIndex);
-    final int skipEnd = max(currentSelectionStartIndex, currentSelectionEndIndex);
+    final int skipStart =
+        min(currentSelectionStartIndex, currentSelectionEndIndex);
+    final int skipEnd =
+        max(currentSelectionStartIndex, currentSelectionEndIndex);
     for (int index = 0; index < selectables.length; index += 1) {
       if (index >= skipStart && index <= skipEnd) {
         continue;
       }
-      dispatchSelectionEventToChild(selectables[index], const ClearSelectionEvent());
+      dispatchSelectionEventToChild(
+          selectables[index], const ClearSelectionEvent());
     }
   }
 
@@ -3040,14 +3256,17 @@ abstract class MultiSelectableSelectionContainerDelegate extends SelectionContai
 
   SelectionResult _handleSelectBoundary(SelectionEvent event) {
     assert(
-      event is SelectWordSelectionEvent || event is SelectParagraphSelectionEvent,
+      event is SelectWordSelectionEvent ||
+          event is SelectParagraphSelectionEvent,
       'This method should only be given selection events that select text boundaries.',
     );
     late final Offset effectiveGlobalPosition;
     if (event.type == SelectionEventType.selectWord) {
-      effectiveGlobalPosition = (event as SelectWordSelectionEvent).globalPosition;
+      effectiveGlobalPosition =
+          (event as SelectWordSelectionEvent).globalPosition;
     } else if (event.type == SelectionEventType.selectParagraph) {
-      effectiveGlobalPosition = (event as SelectParagraphSelectionEvent).globalPosition;
+      effectiveGlobalPosition =
+          (event as SelectParagraphSelectionEvent).globalPosition;
     }
     SelectionResult? lastSelectionResult;
     for (int index = 0; index < selectables.length; index += 1) {
@@ -3066,8 +3285,10 @@ abstract class MultiSelectableSelectionContainerDelegate extends SelectionContai
       }
       if (globalRectsContainPosition) {
         final SelectionGeometry existingGeometry = selectables[index].value;
-        lastSelectionResult = dispatchSelectionEventToChild(selectables[index], event);
-        if (index == selectables.length - 1 && lastSelectionResult == SelectionResult.next) {
+        lastSelectionResult =
+            dispatchSelectionEventToChild(selectables[index], event);
+        if (index == selectables.length - 1 &&
+            lastSelectionResult == SelectionResult.next) {
           return SelectionResult.next;
         }
         if (lastSelectionResult == SelectionResult.next) {
@@ -3082,8 +3303,8 @@ abstract class MultiSelectableSelectionContainerDelegate extends SelectionContai
           selectables
               .where((Selectable target) => target != selectables[index])
               .forEach(
-                (Selectable target) =>
-                    dispatchSelectionEventToChild(target, const ClearSelectionEvent()),
+                (Selectable target) => dispatchSelectionEventToChild(
+                    target, const ClearSelectionEvent()),
               );
           currentSelectionStartIndex = currentSelectionEndIndex = index;
         }
@@ -3126,20 +3347,26 @@ abstract class MultiSelectableSelectionContainerDelegate extends SelectionContai
 
   /// Extend current selection in a certain [TextGranularity].
   @protected
-  SelectionResult handleGranularlyExtendSelection(GranularlyExtendSelectionEvent event) {
-    assert((currentSelectionStartIndex == -1) == (currentSelectionEndIndex == -1));
+  SelectionResult handleGranularlyExtendSelection(
+      GranularlyExtendSelectionEvent event) {
+    assert(
+        (currentSelectionStartIndex == -1) == (currentSelectionEndIndex == -1));
     if (currentSelectionStartIndex == -1) {
       if (event.forward) {
         currentSelectionStartIndex = currentSelectionEndIndex = 0;
       } else {
-        currentSelectionStartIndex = currentSelectionEndIndex = selectables.length - 1;
+        currentSelectionStartIndex =
+            currentSelectionEndIndex = selectables.length - 1;
       }
     }
-    int targetIndex = event.isEnd ? currentSelectionEndIndex : currentSelectionStartIndex;
-    SelectionResult result = dispatchSelectionEventToChild(selectables[targetIndex], event);
+    int targetIndex =
+        event.isEnd ? currentSelectionEndIndex : currentSelectionStartIndex;
+    SelectionResult result =
+        dispatchSelectionEventToChild(selectables[targetIndex], event);
     if (event.forward) {
       assert(result != SelectionResult.previous);
-      while (targetIndex < selectables.length - 1 && result == SelectionResult.next) {
+      while (targetIndex < selectables.length - 1 &&
+          result == SelectionResult.next) {
         targetIndex += 1;
         result = dispatchSelectionEventToChild(selectables[targetIndex], event);
         assert(result != SelectionResult.previous);
@@ -3162,20 +3389,29 @@ abstract class MultiSelectableSelectionContainerDelegate extends SelectionContai
 
   /// Extend current selection in a certain [TextGranularity].
   @protected
-  SelectionResult handleDirectionallyExtendSelection(DirectionallyExtendSelectionEvent event) {
-    assert((currentSelectionStartIndex == -1) == (currentSelectionEndIndex == -1));
+  SelectionResult handleDirectionallyExtendSelection(
+      DirectionallyExtendSelectionEvent event) {
+    assert(
+        (currentSelectionStartIndex == -1) == (currentSelectionEndIndex == -1));
     if (currentSelectionStartIndex == -1) {
-      currentSelectionStartIndex = currentSelectionEndIndex = switch (event.direction) {
+      currentSelectionStartIndex =
+          currentSelectionEndIndex = switch (event.direction) {
         SelectionExtendDirection.previousLine ||
-        SelectionExtendDirection.backward => selectables.length - 1,
-        SelectionExtendDirection.nextLine || SelectionExtendDirection.forward => 0,
+        SelectionExtendDirection.backward =>
+          selectables.length - 1,
+        SelectionExtendDirection.nextLine ||
+        SelectionExtendDirection.forward =>
+          0,
       };
     }
-    int targetIndex = event.isEnd ? currentSelectionEndIndex : currentSelectionStartIndex;
-    SelectionResult result = dispatchSelectionEventToChild(selectables[targetIndex], event);
+    int targetIndex =
+        event.isEnd ? currentSelectionEndIndex : currentSelectionStartIndex;
+    SelectionResult result =
+        dispatchSelectionEventToChild(selectables[targetIndex], event);
     switch (event.direction) {
       case SelectionExtendDirection.previousLine:
-        assert(result == SelectionResult.end || result == SelectionResult.previous);
+        assert(result == SelectionResult.end ||
+            result == SelectionResult.previous);
         if (result == SelectionResult.previous) {
           if (targetIndex > 0) {
             targetIndex -= 1;
@@ -3252,10 +3488,12 @@ abstract class MultiSelectableSelectionContainerDelegate extends SelectionContai
         result = handleSelectParagraph(event as SelectParagraphSelectionEvent);
       case SelectionEventType.granularlyExtendSelection:
         _extendSelectionInProgress = true;
-        result = handleGranularlyExtendSelection(event as GranularlyExtendSelectionEvent);
+        result = handleGranularlyExtendSelection(
+            event as GranularlyExtendSelectionEvent);
       case SelectionEventType.directionallyExtendSelection:
         _extendSelectionInProgress = true;
-        result = handleDirectionallyExtendSelection(event as DirectionallyExtendSelectionEvent);
+        result = handleDirectionallyExtendSelection(
+            event as DirectionallyExtendSelectionEvent);
     }
     _isHandlingSelectionEvent = false;
     _updateSelectionGeometry();
@@ -3287,7 +3525,8 @@ abstract class MultiSelectableSelectionContainerDelegate extends SelectionContai
   /// Override this method if subclasses need to generate additional events or
   /// treatments prior to sending the [SelectionEvent].
   @protected
-  SelectionResult dispatchSelectionEventToChild(Selectable selectable, SelectionEvent event) {
+  SelectionResult dispatchSelectionEventToChild(
+      Selectable selectable, SelectionEvent event) {
     return selectable.dispatchSelectionEvent(event);
   }
 
@@ -3302,16 +3541,21 @@ abstract class MultiSelectableSelectionContainerDelegate extends SelectionContai
   /// Ideally, this method should only be called twice at the beginning of the
   /// drag selection, once for start edge update event, once for end edge update
   /// event.
-  SelectionResult _initSelection(SelectionEdgeUpdateEvent event, {required bool isEnd}) {
+  SelectionResult _initSelection(SelectionEdgeUpdateEvent event,
+      {required bool isEnd}) {
     assert(
-      (isEnd && currentSelectionEndIndex == -1) || (!isEnd && currentSelectionStartIndex == -1),
+      (isEnd && currentSelectionEndIndex == -1) ||
+          (!isEnd && currentSelectionStartIndex == -1),
     );
     int newIndex = -1;
     bool hasFoundEdgeIndex = false;
     SelectionResult? result;
-    for (int index = 0; index < selectables.length && !hasFoundEdgeIndex; index += 1) {
+    for (int index = 0;
+        index < selectables.length && !hasFoundEdgeIndex;
+        index += 1) {
       final Selectable child = selectables[index];
-      final SelectionResult childResult = dispatchSelectionEventToChild(child, event);
+      final SelectionResult childResult =
+          dispatchSelectionEventToChild(child, event);
       switch (childResult) {
         case SelectionResult.next:
         case SelectionResult.none:
@@ -3356,13 +3600,16 @@ abstract class MultiSelectableSelectionContainerDelegate extends SelectionContai
   /// This method starts by sending the selection event to the current
   /// selectable that contains the selection edge, and finds forward or backward
   /// if that selectable no longer contains the selection edge.
-  SelectionResult _adjustSelection(SelectionEdgeUpdateEvent event, {required bool isEnd}) {
+  SelectionResult _adjustSelection(SelectionEdgeUpdateEvent event,
+      {required bool isEnd}) {
     assert(() {
       if (isEnd) {
-        assert(currentSelectionEndIndex < selectables.length && currentSelectionEndIndex >= 0);
+        assert(currentSelectionEndIndex < selectables.length &&
+            currentSelectionEndIndex >= 0);
         return true;
       }
-      assert(currentSelectionStartIndex < selectables.length && currentSelectionStartIndex >= 0);
+      assert(currentSelectionStartIndex < selectables.length &&
+          currentSelectionStartIndex >= 0);
       return true;
     }());
     SelectionResult? finalResult;
@@ -3382,7 +3629,11 @@ abstract class MultiSelectableSelectionContainerDelegate extends SelectionContai
     final bool isOppositeEdgeWithinViewport = isEnd
         ? _selectionGeometry.startSelectionPoint != null
         : _selectionGeometry.endSelectionPoint != null;
-    int newIndex = switch ((isEnd, isCurrentEdgeWithinViewport, isOppositeEdgeWithinViewport)) {
+    int newIndex = switch ((
+      isEnd,
+      isCurrentEdgeWithinViewport,
+      isOppositeEdgeWithinViewport
+    )) {
       (true, true, true) => currentSelectionEndIndex,
       (true, true, false) => currentSelectionEndIndex,
       (true, false, true) => currentSelectionStartIndex,
@@ -3408,8 +3659,10 @@ abstract class MultiSelectableSelectionContainerDelegate extends SelectionContai
     // 1. the selectable returns end, pending, none.
     // 2. the selectable returns previous when looking forward.
     // 2. the selectable returns next when looking backward.
-    while (newIndex < selectables.length && newIndex >= 0 && finalResult == null) {
-      currentSelectableResult = dispatchSelectionEventToChild(selectables[newIndex], event);
+    while (
+        newIndex < selectables.length && newIndex >= 0 && finalResult == null) {
+      currentSelectableResult =
+          dispatchSelectionEventToChild(selectables[newIndex], event);
       switch (currentSelectableResult) {
         case SelectionResult.end:
         case SelectionResult.pending:
@@ -3458,8 +3711,8 @@ typedef _SelectionInfo = ({int contentLength, SelectedContentRange? range});
 ///
 ///  * [EditableTextContextMenuBuilder], which performs the same role for
 ///    [EditableText].
-typedef SelectableRegionContextMenuBuilder =
-    Widget Function(BuildContext context, SelectableRegionState selectableRegionState);
+typedef SelectableRegionContextMenuBuilder = Widget Function(
+    BuildContext context, SelectableRegionState selectableRegionState);
 
 /// The status of the selection under a [SelectableRegion].
 ///
@@ -3544,7 +3797,8 @@ final class SelectableRegionSelectionStatusScope extends InheritedWidget {
   ///
   /// Listeners will be called even when the value of the [SelectableRegionSelectionStatus]
   /// does not change. The selection under the [SelectableRegion] still may have changed.
-  final ValueListenable<SelectableRegionSelectionStatus> selectionStatusNotifier;
+  final ValueListenable<SelectableRegionSelectionStatus>
+      selectionStatusNotifier;
 
   /// The closest instance of this class that encloses the given context.
   ///
@@ -3553,9 +3807,11 @@ final class SelectableRegionSelectionStatusScope extends InheritedWidget {
   ///
   /// Calling this method will create a dependency on the closest
   /// [SelectableRegionSelectionStatusScope] in the [context], if there is one.
-  static ValueListenable<SelectableRegionSelectionStatus>? maybeOf(BuildContext context) {
+  static ValueListenable<SelectableRegionSelectionStatus>? maybeOf(
+      BuildContext context) {
     return context
-        .dependOnInheritedWidgetOfExactType<SelectableRegionSelectionStatusScope>()
+        .dependOnInheritedWidgetOfExactType<
+            SelectableRegionSelectionStatusScope>()
         ?.selectionStatusNotifier;
   }
 
@@ -3597,7 +3853,8 @@ final class SelectableRegionSelectionStatusScope extends InheritedWidget {
 ///   * [SelectableRegion], which provides an overview of the selection system.
 class SelectionListener extends StatefulWidget {
   /// Create a new [SelectionListener] widget.
-  const SelectionListener({super.key, required this.selectionNotifier, required this.child});
+  const SelectionListener(
+      {super.key, required this.selectionNotifier, required this.child});
 
   /// Notifies listeners when the selection has changed.
   final SelectionListenerNotifier selectionNotifier;
@@ -3612,7 +3869,8 @@ class SelectionListener extends StatefulWidget {
 }
 
 class _SelectionListenerState extends State<SelectionListener> {
-  late final _SelectionListenerDelegate _selectionDelegate = _SelectionListenerDelegate(
+  late final _SelectionListenerDelegate _selectionDelegate =
+      _SelectionListenerDelegate(
     selectionNotifier: widget.selectionNotifier,
   );
 
@@ -3632,14 +3890,16 @@ class _SelectionListenerState extends State<SelectionListener> {
 
   @override
   Widget build(BuildContext context) {
-    return SelectionContainer(delegate: _selectionDelegate, child: widget.child);
+    return SelectionContainer(
+        delegate: _selectionDelegate, child: widget.child);
   }
 }
 
 final class _SelectionListenerDelegate extends StaticSelectionContainerDelegate
     implements SelectionDetails {
-  _SelectionListenerDelegate({required SelectionListenerNotifier selectionNotifier})
-    : _selectionNotifier = selectionNotifier {
+  _SelectionListenerDelegate(
+      {required SelectionListenerNotifier selectionNotifier})
+      : _selectionNotifier = selectionNotifier {
     _selectionNotifier._registerSelectionListenerDelegate(this);
   }
 
@@ -3709,12 +3969,14 @@ final class SelectionListenerNotifier extends ChangeNotifier {
   /// To check if a notifier has been registered to a [SelectionListener] use [registered].
   SelectionDetails get selection =>
       _selectionDelegate ??
-      (throw Exception('Selection client has not been registered to this notifier.'));
+      (throw Exception(
+          'Selection client has not been registered to this notifier.'));
 
   /// Whether this [SelectionListenerNotifier] has been registered to a [SelectionListener].
   bool get registered => _selectionDelegate != null;
 
-  void _registerSelectionListenerDelegate(_SelectionListenerDelegate selectionDelegate) {
+  void _registerSelectionListenerDelegate(
+      _SelectionListenerDelegate selectionDelegate) {
     assert(
       !registered,
       'This SelectionListenerNotifier is already registered to another SelectionListener. Try providing a new SelectionListenerNotifier.',

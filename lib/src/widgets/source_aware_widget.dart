@@ -4,7 +4,7 @@ import 'package:flutter/widgets.dart';
 import 'source_markdown_registry.dart';
 
 /// Wraps a widget with its original markdown source for intelligent copy/paste.
-/// 
+///
 /// When this widget is selected and copied, the patched SelectionArea will
 /// extract the markdown source instead of the rendered text.
 class SourceAwareWidget extends SingleChildRenderObjectWidget {
@@ -22,7 +22,8 @@ class SourceAwareWidget extends SingleChildRenderObjectWidget {
   }
 
   @override
-  void updateRenderObject(BuildContext context, RenderSourceAware renderObject) {
+  void updateRenderObject(
+      BuildContext context, RenderSourceAware renderObject) {
     renderObject.attachment = attachment;
   }
 }
@@ -41,5 +42,17 @@ class RenderSourceAware extends RenderProxyBox {
     }
     _attachment = value;
     SourceMarkdownRegistry.instance.register(this, value);
+  }
+
+  @override
+  void attach(PipelineOwner owner) {
+    super.attach(owner);
+    SourceMarkdownRegistry.instance.register(this, _attachment);
+  }
+
+  @override
+  void detach() {
+    SourceMarkdownRegistry.instance.unregister(this);
+    super.detach();
   }
 }

@@ -5,6 +5,7 @@ import 'package:flutter/rendering.dart';
 
 import '../flutter/debug_log.dart';
 import 'leaf_text_registry.dart';
+import 'markdown_selection_model.dart';
 
 import '../widgets/source_markdown_registry.dart';
 
@@ -68,11 +69,13 @@ class SelectionSerializer {
     Rect? lastRect;
 
     final nodeIndex = _buildNodeIndex(fragments);
-    debugLog(() => 'SelectionSerializer: fragments=${fragments.length}, nodes=${nodeIndex.length}');
+    debugLog(() =>
+        'SelectionSerializer: fragments=${fragments.length}, nodes=${nodeIndex.length}');
     final fullySelectedListItems =
         _findFullySelectedListItems(nodeIndex, fragments);
     final tableRowGroups = _groupTableRows(nodeIndex, fragments);
-    debugLog(() => 'SelectionSerializer: full list items=${fullySelectedListItems.length}, table rows=${tableRowGroups.length}');
+    debugLog(() =>
+        'SelectionSerializer: full list items=${fullySelectedListItems.length}, table rows=${tableRowGroups.length}');
 
     final emittedListItems = <CmarkNode>{};
     final emittedTableRows = <CmarkNode>{};
@@ -84,7 +87,8 @@ class SelectionSerializer {
 
       String textToWrite;
 
-      debugLog(() => 'Fragment $i node=${node?.type} attachment=${attachment != null}');
+      debugLog(() =>
+          'Fragment $i node=${node?.type} attachment=${attachment != null}');
 
       if (node != null &&
           node.parent?.type == CmarkNodeType.item &&
@@ -100,11 +104,9 @@ class SelectionSerializer {
           node.parent?.type == CmarkNodeType.item &&
           fullySelectedListItems.contains(node.parent!)) {
         continue;
-      } else if (node != null &&
-          node.type == CmarkNodeType.tableCell) {
+      } else if (node != null && node.type == CmarkNodeType.tableCell) {
         final row = node.parent;
-        final group =
-            row != null ? tableRowGroups[row] : null;
+        final group = row != null ? tableRowGroups[row] : null;
         if (row != null &&
             row.type == CmarkNodeType.tableRow &&
             group != null &&
@@ -135,7 +137,8 @@ class SelectionSerializer {
           nodeType != CmarkNodeType.list;
 
       if (isDuplicateBlock) {
-        debugLog(() => 'Skipping duplicate fragment for ${attachment.blockNode?.type}');
+        debugLog(() =>
+            'Skipping duplicate fragment for ${attachment.blockNode?.type}');
         continue;
       }
 
@@ -385,7 +388,8 @@ class SelectionSerializer {
   }) {
     final buffer = StringBuffer();
     final ordered = list.listData.listType == CmarkListType.ordered;
-    final startNumber = ordered ? (list.listData.start == 0 ? 1 : list.listData.start) : 1;
+    final startNumber =
+        ordered ? (list.listData.start == 0 ? 1 : list.listData.start) : 1;
 
     var itemNumber = startNumber;
     var item = list.firstChild;
@@ -408,8 +412,8 @@ class SelectionSerializer {
       var firstBlock = true;
       for (final block in childBlocks) {
         if (block.type == CmarkNodeType.list) {
-          final nested =
-              _serializeNestedList(block, nodeIndex, fragments, indent: '$indent  ');
+          final nested = _serializeNestedList(block, nodeIndex, fragments,
+              indent: '$indent  ');
           buffer.write(nested);
           continue;
         }
@@ -472,9 +476,34 @@ class SelectionSerializer {
       return '---\n';
     }
 
+    final node = attachment?.blockNode;
+    if (node != null) {
+      final model = MarkdownSelectionModel(node);
+      final range = fragment.range;
+      if (range != null) {
+        final markdown =
+            model.toMarkdown(range.normalizedStart, range.normalizedEnd);
+        if (markdown.isNotEmpty) {
+          return markdown;
+        }
+      }
+
+      // Coarse ConversationScreen selections are expanded into one full-block
+      // fragment per SourceAware block. In that path no precise range is
+      // available, but the fragment text is exactly the block's projected text,
+      // so serialize the full block back to markdown.
+      if (_normalized(fragment.plainText) == _normalized(model.plainText)) {
+        final markdown = model.toMarkdown(0, model.length);
+        if (markdown.isNotEmpty) {
+          return markdown;
+        }
+      }
+    }
+
     // Try table registry fallback for fragments without attachments
     if (attachment == null) {
-      final tableMarkdown = TableLeafRegistry.instance.toMarkdown(fragment.plainText);
+      final tableMarkdown =
+          TableLeafRegistry.instance.toMarkdown(fragment.plainText);
       if (tableMarkdown != null) {
         return tableMarkdown;
       }
@@ -482,6 +511,9 @@ class SelectionSerializer {
 
     return fragment.plainText;
   }
+
+  String _normalized(String value) =>
+      value.replaceAll('\r', '').replaceAll(RegExp(r'\s+'), ' ').trim();
 
   void _markDescendantItemsEmitted(
     CmarkNode item,

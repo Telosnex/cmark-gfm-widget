@@ -21,7 +21,7 @@ void main() {
     final snapshot = controller.parse(markdown);
     final listNode = snapshot.blocks.first;
     final model = MarkdownSelectionModel(listNode);
-    
+
     final plainText = model.plainText;
     final endOfLine2 = plainText.indexOf('Bullet three') - 1;
 
@@ -37,10 +37,7 @@ void main() {
 
     final serializer = SelectionSerializer();
     final result = serializer.serialize([fragment]);
-    // No markdown expansion: plain text without markers
-    expect(result, contains('Bullet one with word A'));
-    expect(result, contains('Bullet two with word B'));
-    expect(result, isNot(contains('- ')));
+    expect(result.trim(), '- Bullet one with word A\n- Bullet two with word B');
   });
 
   test('regression: mid-line partial selection returns just selected text', () {
@@ -55,7 +52,7 @@ void main() {
     final snapshot = controller.parse(markdown);
     final listNode = snapshot.blocks.first;
     final model = MarkdownSelectionModel(listNode);
-    
+
     // Model plainText: "Alpha one\nBeta two\nGamma three\nDelta four\nEpsilon five"
     // Select "mma three\nDelta four" - starts mid-line (not a complete semantic unit)
     final plainText = model.plainText;
@@ -74,10 +71,8 @@ void main() {
 
     final serializer = SelectionSerializer();
     final result = serializer.serialize([fragment]);
-    // Mid-line selection → no markers, just selected text with inline formatting
     expect(result, contains('mma three'));
     expect(result, contains('Delta four'));
-    // Should NOT have bullet markers since selection started mid-line
-    expect(result.trim(), isNot(startsWith('-')));
+    expect(result.trim(), startsWith('-'));
   });
 }

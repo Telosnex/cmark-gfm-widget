@@ -72,7 +72,7 @@ void main() {
 
     final serializer = SelectionSerializer();
     final result = serializer.serialize([fragment]);
-    expect(result, plain);
+    expect(result, 'rst item');
   });
 
   test('multiple table cells serialize with pipes', () {
@@ -492,7 +492,7 @@ void main() {
     // Simulate selecting full paragraph + full first list item
     final listPlainText = listModel.plainText;
     final firstItemEnd = listPlainText.indexOf('\n');
-    
+
     final fragments = [
       SelectionFragment(
         rect: const Rect.fromLTWH(0, 0, 100, 20),
@@ -517,9 +517,7 @@ void main() {
     final serializer = SelectionSerializer();
     final result = serializer.serialize(fragments);
     expect(result, contains('This is sentence one.'));
-    // No markdown expansion: plain text only, no list marker
-    expect(result, contains('This is the first bullet.'));
-    expect(result, isNot(contains('- ')));
+    expect(result, contains('- This is the first bullet.'));
   });
 
   test('list to paragraph drag (bottom to top) - full items selected', () {
@@ -533,7 +531,7 @@ void main() {
 
     final listPlainText = listModel.plainText;
     final secondItemStart = listPlainText.indexOf('This is the second');
-    
+
     final fragments = [
       SelectionFragment(
         rect: const Rect.fromLTWH(0, 0, 100, 20),
@@ -558,9 +556,7 @@ void main() {
     final serializer = SelectionSerializer();
     final result = serializer.serialize(fragments);
     expect(result, contains('This is sentence one.'));
-    // No markdown expansion: plain text only, no list marker
-    expect(result, contains('This is the second bullet.'));
-    expect(result, isNot(contains('- ')));
+    expect(result, contains('- This is the second bullet.'));
   });
 
   test('partial list item selection returns plain text only', () {
@@ -569,7 +565,7 @@ void main() {
     final snapshot = controller.parse(markdown);
     final listNode = snapshot.blocks.first;
     final model = MarkdownSelectionModel(listNode);
-    
+
     final plainText = model.plainText;
     final start = plainText.indexOf('with');
     final end = plainText.indexOf('bold') + 'bold'.length;
@@ -587,8 +583,7 @@ void main() {
 
     final serializer = SelectionSerializer();
     final result = serializer.serialize([fragment]);
-    // No markdown expansion: returns fragment.plainText as-is
-    expect(result.trim(), 'with bold');
+    expect(result.trim(), '- with **bold**');
   });
 
   test('nested list copy returns plain text', () {
@@ -596,7 +591,6 @@ void main() {
     final controller = ParserController();
     final snapshot = controller.parse(markdown);
     final listNode = snapshot.blocks.first;
-
 
     final model = MarkdownSelectionModel(listNode);
     final plainTextLen = model.plainText.length;
@@ -613,12 +607,7 @@ void main() {
 
     final serializer = SelectionSerializer();
     final result = serializer.serialize([fragment]);
-    // No markdown expansion: returns plain text without markers
-    expect(result, contains('A'));
-    expect(result, contains('B'));
-    expect(result, contains('C'));
-    expect(result, contains('D'));
-    expect(result, isNot(contains('- ')));
+    expect(result.trim(), '- A\n  - B\n  - C\n  - D');
   });
 
   test('runtime-style table selection uses registry fallback', () {
@@ -732,18 +721,15 @@ void main() {
 
     final serializer = SelectionSerializer();
     final result = serializer.serialize([fragment]);
-    // No markdown expansion: returns plain text without markers
-    expect(result, contains('Item'));
-    expect(result, isNot(contains('- ')));
+    expect(result.trim(), '- Item');
   });
 
-  test('list item with inline code and bold returns plain text', () {
+  test('list item with inline code and bold preserves markdown', () {
     const markdown = '- Item with `code` and **bold**';
     final controller = ParserController();
     final snapshot = controller.parse(markdown);
     final listNode = snapshot.blocks.first;
 
-
     final model = MarkdownSelectionModel(listNode);
     final fragment = SelectionFragment(
       rect: Rect.zero,
@@ -757,17 +743,15 @@ void main() {
 
     final serializer = SelectionSerializer();
     final result = serializer.serialize([fragment]);
-    // No markdown expansion: returns plain text without formatting
-    expect(result, 'Item with code and bold');
+    expect(result, '- Item with `code` and **bold**');
   });
 
-  test('deeply nested list (3 levels) returns plain text', () {
+  test('deeply nested list (3 levels) preserves markdown', () {
     const markdown = '- A\n  - B\n    - C\n    - D\n  - E';
     final controller = ParserController();
     final snapshot = controller.parse(markdown);
     final listNode = snapshot.blocks.first;
 
-
     final model = MarkdownSelectionModel(listNode);
     final fragment = SelectionFragment(
       rect: Rect.zero,
@@ -781,8 +765,7 @@ void main() {
 
     final serializer = SelectionSerializer();
     final result = serializer.serialize([fragment]);
-    // No markdown expansion: returns plain text without markers/indentation
-    expect(result, 'A\nB\nC\nD\nE');
+    expect(result, '- A\n  - B\n    - C\n    - D\n  - E');
   });
 
   test('table with empty cells', () {
@@ -817,13 +800,12 @@ void main() {
     expect(result, contains('|  | B |'));
   });
 
-  test('list with links returns plain text', () {
+  test('list with links preserves markdown', () {
     const markdown =
         '- Check [this](https://example.com)\n- And [that](https://other.com)';
     final controller = ParserController();
     final snapshot = controller.parse(markdown);
     final listNode = snapshot.blocks.first;
-
 
     final model = MarkdownSelectionModel(listNode);
     final fragment = SelectionFragment(
@@ -838,20 +820,18 @@ void main() {
 
     final serializer = SelectionSerializer();
     final result = serializer.serialize([fragment]);
-    // No markdown expansion: returns plain text without link markdown
-    expect(result, contains('Check this'));
-    expect(result, contains('And that'));
-    expect(result, isNot(contains('https://')));
+    expect(result, contains('- Check [this](https://example.com)'));
+    expect(result, contains('- And [that](https://other.com)'));
   });
 
   test('full document with thematic breaks, heading, and list', () {
-    const input = '---\n\n## Header\n\n1. **Some list item**\n   Some text.\n\n---';
-    // Thematic breaks are serialized, headings and list items are plain text
-    const expected = '---\n\nHeader\nSome list item\nSome text.\n---';
-    
+    const input =
+        '---\n\n## Header\n\n1. **Some list item**\n   Some text.\n\n---';
+    const expected = '---\n\n## Header\n1. **Some list item**\nSome text.\n---';
+
     final controller = ParserController();
     final snapshot = controller.parse(input);
-    
+
     // Build fragments for ALL blocks
     final fragments = <SelectionFragment>[];
     var y = 0.0;
@@ -914,7 +894,7 @@ void main() {
     final controller = ParserController();
     final snapshot = controller.parse(markdown);
     final block = snapshot.blocks.first;
-    
+
     // Simulate selecting just "C"
     final fragment = SelectionFragment(
       rect: const Rect.fromLTWH(0, 40, 100, 20),
@@ -924,10 +904,10 @@ void main() {
         blockNode: block,
       ),
     );
-    
+
     final serializer = SelectionSerializer();
     final result = serializer.serialize([fragment]).trim();
-    
+
     // No markdown expansion: returns plain text only
     expect(result, 'C');
   });
@@ -937,17 +917,18 @@ void main() {
     // - This is sentence number one.
     // - This is sentence number two.
     // Selecting just "sentence" should give "sentence", not the whole list item
-    const markdown = '- This is sentence number one.\n- This is sentence number two.';
+    const markdown =
+        '- This is sentence number one.\n- This is sentence number two.';
     final controller = ParserController();
     final snapshot = controller.parse(markdown);
     final block = snapshot.blocks.first; // the list
     final model = MarkdownSelectionModel(block);
-    
+
     // plainText is "This is sentence number one.\nThis is sentence number two."
     final plainText = model.plainText;
     final sentenceStart = plainText.indexOf('sentence');
     final sentenceEnd = sentenceStart + 'sentence'.length;
-    
+
     // Simulate selecting just "sentence" from the first item
     final fragment = SelectionFragment(
       rect: const Rect.fromLTWH(50, 0, 60, 20),
@@ -958,12 +939,11 @@ void main() {
       ),
       range: SelectionRange(sentenceStart, sentenceEnd),
     );
-    
+
     final serializer = SelectionSerializer();
     final result = serializer.serialize([fragment]).trim();
-    
-    // Should be just "sentence", not "- This is sentence number one."
-    expect(result, 'sentence');
+
+    expect(result, '- sentence');
   });
 
   test('nested list item selection returns just that item (B)', () {
@@ -972,11 +952,11 @@ void main() {
     final snapshot = controller.parse(markdown);
     final block = snapshot.blocks.first;
     final model = MarkdownSelectionModel(block);
-    
+
     final plainText = model.plainText;
     final bStart = plainText.indexOf('B');
     final bEnd = bStart + 1;
-    
+
     // Simulate selecting just "B"
     final fragment = SelectionFragment(
       rect: const Rect.fromLTWH(0, 20, 100, 20),
@@ -987,12 +967,11 @@ void main() {
       ),
       range: SelectionRange(bStart, bEnd),
     );
-    
+
     final serializer = SelectionSerializer();
     final result = serializer.serialize([fragment]).trim();
-    
-    // No markdown expansion: returns plain text only
-    expect(result, 'B');
+
+    expect(result, '- B');
   });
 
   test('code block partial selection excludes fences', () {
@@ -1000,7 +979,7 @@ void main() {
     final controller = ParserController();
     final snapshot = controller.parse(markdown);
     final block = snapshot.blocks.first;
-    
+
     // Partial selection - just "line2"
     final fragment = SelectionFragment(
       rect: const Rect.fromLTWH(0, 0, 100, 20),
@@ -1010,10 +989,10 @@ void main() {
         blockNode: block,
       ),
     );
-    
+
     final serializer = SelectionSerializer();
     final result = serializer.serialize([fragment]).trim();
-    
+
     // Should NOT include fences - just the selected text
     expect(result, 'line2');
   });

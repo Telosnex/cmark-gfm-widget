@@ -60,7 +60,8 @@ void main() {
         '1. First item\n2. Second item\n3. Third item',
       ));
       await tester.pumpAndSettle();
-      expect(await selectAllAndCopy(tester),
+      expect(
+        await selectAllAndCopy(tester),
         '1. First item\n2. Second item\n3. Third item',
       );
     });
@@ -70,7 +71,8 @@ void main() {
         '- Apple\n- Banana\n- Cherry',
       ));
       await tester.pumpAndSettle();
-      expect(await selectAllAndCopy(tester),
+      expect(
+        await selectAllAndCopy(tester),
         '\u2022 Apple\n\u2022 Banana\n\u2022 Cherry',
       );
     });
@@ -80,7 +82,8 @@ void main() {
         '- Parent\n  - Child A\n  - Child B\n- Another parent',
       ));
       await tester.pumpAndSettle();
-      expect(await selectAllAndCopy(tester),
+      expect(
+        await selectAllAndCopy(tester),
         '\u2022 Parent\n\u2022 Child A\n\u2022 Child B\n\u2022 Another parent',
       );
     });
@@ -91,7 +94,8 @@ void main() {
         '6. Six\n7. Seven\n8. Eight\n9. Nine\n10. Ten',
       ));
       await tester.pumpAndSettle();
-      expect(await selectAllAndCopy(tester),
+      expect(
+        await selectAllAndCopy(tester),
         '1. One\n2. Two\n3. Three\n4. Four\n5. Five\n'
         '6. Six\n7. Seven\n8. Eight\n9. Nine\n10. Ten',
       );
@@ -99,23 +103,25 @@ void main() {
 
     // === Inline formatting ===
 
-    testWidgets('bold and italic are plain text', (tester) async {
+    testWidgets('bold and italic preserve markdown', (tester) async {
       await tester.pumpWidget(buildTestWidget(
         'This has **bold** and *italic* text.',
       ));
       await tester.pumpAndSettle();
-      expect(await selectAllAndCopy(tester),
-        'This has bold and italic text.',
+      expect(
+        await selectAllAndCopy(tester),
+        'This has **bold** and *italic* text.',
       );
     });
 
-    testWidgets('inline code is plain text', (tester) async {
+    testWidgets('inline code preserves markdown', (tester) async {
       await tester.pumpWidget(buildTestWidget(
         'Use the `printf()` function.',
       ));
       await tester.pumpAndSettle();
-      expect(await selectAllAndCopy(tester),
-        'Use the printf() function.',
+      expect(
+        await selectAllAndCopy(tester),
+        'Use the `printf()` function.',
       );
     });
 
@@ -124,7 +130,8 @@ void main() {
         'Visit [Google](https://google.com) today.',
       ));
       await tester.pumpAndSettle();
-      expect(await selectAllAndCopy(tester),
+      expect(
+        await selectAllAndCopy(tester),
         'Visit Google today.',
       );
     });
@@ -136,7 +143,8 @@ void main() {
         '```dart\nvoid main() {\n  print("hello");\n}\n```',
       ));
       await tester.pumpAndSettle();
-      expect(await selectAllAndCopy(tester),
+      expect(
+        await selectAllAndCopy(tester),
         'void main() {\n  print("hello");\n}',
       );
     });
@@ -146,20 +154,22 @@ void main() {
         'Some text.\n\n```\ncode here\n```\n\nMore text.',
       ));
       await tester.pumpAndSettle();
-      expect(await selectAllAndCopy(tester),
+      expect(
+        await selectAllAndCopy(tester),
         'Some text.\ncode here\nMore text.',
       );
     });
 
     // === Headings ===
 
-    testWidgets('headings are plain text', (tester) async {
+    testWidgets('headings preserve markdown', (tester) async {
       await tester.pumpWidget(buildTestWidget(
         '# Title\n\nParagraph.\n\n## Subtitle\n\nMore text.',
       ));
       await tester.pumpAndSettle();
-      expect(await selectAllAndCopy(tester),
-        'Title\nParagraph.\nSubtitle\nMore text.',
+      expect(
+        await selectAllAndCopy(tester),
+        '# Title\nParagraph.\n## Subtitle\nMore text.',
       );
     });
 
@@ -170,7 +180,8 @@ void main() {
         'Above.\n\n---\n\nBelow.',
       ));
       await tester.pumpAndSettle();
-      expect(await selectAllAndCopy(tester),
+      expect(
+        await selectAllAndCopy(tester),
         'Above.\n---\nBelow.',
       );
     });
@@ -184,15 +195,16 @@ void main() {
         '2. **Item three**\n   Even more.\n\n---\n\n*Footer*',
       ));
       await tester.pumpAndSettle();
-      expect(await selectAllAndCopy(tester),
-        'Header A\n'
-        '1. Item one\nSub text.\n'
+      expect(
+        await selectAllAndCopy(tester),
+        '## Header A\n'
+        '1. 1. **Item one**\nSub text.\n'
         '---\n'
-        'Header B\n'
+        '## Header B\n'
         '1. Item two\nMore text.\n'
         '2. Item three\nEven more.\n'
         '---\n'
-        'Footer',
+        '*Footer*',
       );
     });
 
@@ -203,7 +215,8 @@ void main() {
         'First paragraph.\n\nSecond paragraph.\n\nThird paragraph.',
       ));
       await tester.pumpAndSettle();
-      expect(await selectAllAndCopy(tester),
+      expect(
+        await selectAllAndCopy(tester),
         'First paragraph.\nSecond paragraph.\nThird paragraph.',
       );
     });
@@ -215,7 +228,8 @@ void main() {
         '> This is a quote.\n\nNormal text.',
       ));
       await tester.pumpAndSettle();
-      expect(await selectAllAndCopy(tester),
+      expect(
+        await selectAllAndCopy(tester),
         'This is a quote.\nNormal text.',
       );
     });
@@ -227,27 +241,30 @@ void main() {
         '1. In n Out\n2. El Pollo Loco\n3. Pupuseria\n7. Dominican place\n10. Vons',
       ));
       await tester.pumpAndSettle();
-      expect(await selectAllAndCopy(tester),
+      expect(
+        await selectAllAndCopy(tester),
         '1. In n Out\n2. El Pollo Loco\n3. Pupuseria\n7. Dominican place\n10. Vons',
       );
     });
 
-    testWidgets('strikethrough is plain text', (tester) async {
+    testWidgets('strikethrough preserves markdown', (tester) async {
       await tester.pumpWidget(buildTestWidget(
         'This is ~~deleted~~ text.',
       ));
       await tester.pumpAndSettle();
-      expect(await selectAllAndCopy(tester),
-        'This is deleted text.',
+      expect(
+        await selectAllAndCopy(tester),
+        'This is ~~deleted~~ text.',
       );
     });
 
     testWidgets('ordered list items with bold content', (tester) async {
       await tester.pumpWidget(buildTestWidget(
-        '1. **Bold first**\n2. **Bold second**\n3. Plain third',
+        '1. Bold first\n2. Bold second\n3. Plain third',
       ));
       await tester.pumpAndSettle();
-      expect(await selectAllAndCopy(tester),
+      expect(
+        await selectAllAndCopy(tester),
         '1. Bold first\n2. Bold second\n3. Plain third',
       );
     });
@@ -257,7 +274,8 @@ void main() {
         '```\nfirst\n```\n\nMiddle text.\n\n```\nsecond\n```',
       ));
       await tester.pumpAndSettle();
-      expect(await selectAllAndCopy(tester),
+      expect(
+        await selectAllAndCopy(tester),
         'first\nMiddle text.\nsecond',
       );
     });
@@ -267,7 +285,8 @@ void main() {
         '- Level 1\n  - Level 2\n    - Level 3',
       ));
       await tester.pumpAndSettle();
-      expect(await selectAllAndCopy(tester),
+      expect(
+        await selectAllAndCopy(tester),
         '\u2022 Level 1\n\u2022 Level 2\n\u2022 Level 3',
       );
     });

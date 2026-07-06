@@ -20,7 +20,6 @@ import 'package:vector_math/vector_math_64.dart';
 
 import '../widgets/source_markdown_registry.dart';
 import '../selection/leaf_text_registry.dart';
-import '../selection/markdown_selection_model.dart';
 import '../selection/selection_serializer.dart';
 // Examples can assume:
 // late GlobalKey key;
@@ -3017,44 +3016,14 @@ abstract class MultiSelectableSelectionContainerDelegate
     // SelectionFragment objects with AST attachments and hand them to SelectionSerializer,
     // which knows how to reconstruct canonical markdown.
     //
-    // First pass: get attachment for each selection.
-    // In a plain MarkdownColumn the selectable is usually a leaf RenderParagraph
-    // and ancestor lookup gives a single attachment. In ConversationScreen,
-    // the outer SelectionArea can return a coarse selectable whose selected
-    // plainText spans many markdown blocks. In that case expand by selected
-    // rect into the SourceAware block rects so the serializer receives one
-    // fragment per markdown block instead of one giant plainText blob.
+    // First pass: get attachment for each selection
     final rawFragments = <(SelectedContent, Rect, MarkdownSourceAttachment?)>[];
-    final expandedAttachments = <MarkdownSourceAttachment>{};
     for (final (selectable, data, rect) in selections) {
       final attachment = _findAttachment(selectable, rect);
-      final blockNode = attachment?.blockNode;
-      final blockPlainLength = blockNode == null
-          ? 0
-          : MarkdownSelectionModel(blockNode).plainText.length;
-      final rectMatches =
-          SourceMarkdownRegistry.instance.findAttachmentsInRect(rect);
-      final shouldExpandByRect = rectMatches.length > 1 &&
-          data.plainText.length > blockPlainLength + 20;
-
-      if (shouldExpandByRect) {
-        for (final match in rectMatches) {
-          if (!expandedAttachments.add(match.attachment)) {
-            continue;
-          }
-          final node = match.attachment.blockNode;
-          final plainText = node == null
-              ? data.plainText
-              : MarkdownSelectionModel(node).plainText;
-          rawFragments.add((
-            SelectedContent(plainText: plainText),
-            match.rect,
-            match.attachment,
-          ));
-        }
-      } else {
-        rawFragments.add((data, rect, attachment));
-      }
+      copyDiagnosticLog(() => 'selection selectable=${selectable.runtimeType} '
+          'attachment=${attachment?.blockNode?.type} '
+          'textLen=${data.plainText.length}');
+      rawFragments.add((data, rect, attachment));
     }
 
     // Second pass: group by attachment and aggregate.

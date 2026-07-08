@@ -73,7 +73,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(
         await selectAllAndCopy(tester),
-        '\u2022 Apple\n\u2022 Banana\n\u2022 Cherry',
+        '- Apple\n- Banana\n- Cherry',
       );
     });
 
@@ -84,7 +84,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(
         await selectAllAndCopy(tester),
-        '\u2022 Parent\n\u2022 Child A\n\u2022 Child B\n\u2022 Another parent',
+        '- Parent\n  - Child A\n  - Child B\n- Another parent',
       );
     });
 
@@ -125,14 +125,14 @@ void main() {
       );
     });
 
-    testWidgets('links are plain text', (tester) async {
+    testWidgets('links preserve markdown', (tester) async {
       await tester.pumpWidget(buildTestWidget(
         'Visit [Google](https://google.com) today.',
       ));
       await tester.pumpAndSettle();
       expect(
         await selectAllAndCopy(tester),
-        'Visit Google today.',
+        'Visit [Google](https://google.com) today.',
       );
     });
 
@@ -156,7 +156,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(
         await selectAllAndCopy(tester),
-        'Some text.\ncode here\nMore text.',
+        'Some text.\n\ncode here\n\nMore text.',
       );
     });
 
@@ -169,7 +169,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(
         await selectAllAndCopy(tester),
-        '# Title\nParagraph.\n## Subtitle\nMore text.',
+        '# Title\n\nParagraph.\n\n## Subtitle\n\nMore text.',
       );
     });
 
@@ -182,7 +182,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(
         await selectAllAndCopy(tester),
-        'Above.\n---\nBelow.',
+        'Above.\n\n---\n\nBelow.',
       );
     });
 
@@ -198,12 +198,19 @@ void main() {
       expect(
         await selectAllAndCopy(tester),
         '## Header A\n'
-        '1. 1. **Item one**\nSub text.\n'
+        '\n'
+        '1. **Item one**\n'
+        'Sub text.\n'
+        '\n'
         '---\n'
+        '\n'
         '## Header B\n'
-        '1. Item two\nMore text.\n'
-        '2. Item three\nEven more.\n'
+        '\n'
+        '1. **Item two**\nMore text.\n'
+        '2. **Item three**\nEven more.\n'
+        '\n'
         '---\n'
+        '\n'
         '*Footer*',
       );
     });
@@ -217,7 +224,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(
         await selectAllAndCopy(tester),
-        'First paragraph.\nSecond paragraph.\nThird paragraph.',
+        'First paragraph.\n\nSecond paragraph.\n\nThird paragraph.',
       );
     });
 
@@ -230,7 +237,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(
         await selectAllAndCopy(tester),
-        'This is a quote.\nNormal text.',
+        'This is a quote.\n\nNormal text.',
       );
     });
 
@@ -238,12 +245,16 @@ void main() {
 
     testWidgets('non-sequential ordered list numbers', (tester) async {
       await tester.pumpWidget(buildTestWidget(
-        '1. In n Out\n2. El Pollo Loco\n3. Pupuseria\n7. Dominican place\n10. Vons',
+        // CommonMark: only the first number of an ordered list is significant;
+        // canonical serialization renumbers sequentially from it.
+        '1. In n Out\n2. El Pollo Loco\n3. Pupuseria\n4. Dominican place\n5. Vons',
       ));
       await tester.pumpAndSettle();
       expect(
         await selectAllAndCopy(tester),
-        '1. In n Out\n2. El Pollo Loco\n3. Pupuseria\n7. Dominican place\n10. Vons',
+        // CommonMark: only the first number of an ordered list is significant;
+        // canonical serialization renumbers sequentially from it.
+        '1. In n Out\n2. El Pollo Loco\n3. Pupuseria\n4. Dominican place\n5. Vons',
       );
     });
 
@@ -276,7 +287,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(
         await selectAllAndCopy(tester),
-        'first\nMiddle text.\nsecond',
+        'first\n\nMiddle text.\n\nsecond',
       );
     });
 
@@ -287,7 +298,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(
         await selectAllAndCopy(tester),
-        '\u2022 Level 1\n\u2022 Level 2\n\u2022 Level 3',
+        '- Level 1\n  - Level 2\n    - Level 3',
       );
     });
   });

@@ -155,75 +155,75 @@ void main() {
       expect(clipboardText, isNotNull);
       expect(clipboardText, contains('Chunk 4'));
     });
-  testWidgets('STREAMED full repro, then select all + copy', (tester) async {
-    tester.view.physicalSize = const Size(800, 8000);
-    tester.view.devicePixelRatio = 1.0;
-    addTearDown(tester.view.reset);
+    testWidgets('STREAMED full repro, then select all + copy', (tester) async {
+      tester.view.physicalSize = const Size(800, 8000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
 
-    // Simulate streaming: pump with growing prefixes of the document,
-    // like the app does during token streaming. Same widget identity, so
-    // RenderObjects are reused across snapshot revisions.
-    const chunkSize = 120;
-    for (var end = chunkSize; end < fullRepro.length; end += chunkSize) {
-      await tester.pumpWidget(
-        buildTestWidget(fullRepro.substring(0, end)),
+      // Simulate streaming: pump with growing prefixes of the document,
+      // like the app does during token streaming. Same widget identity, so
+      // RenderObjects are reused across snapshot revisions.
+      const chunkSize = 120;
+      for (var end = chunkSize; end < fullRepro.length; end += chunkSize) {
+        await tester.pumpWidget(
+          buildTestWidget(fullRepro.substring(0, end)),
+        );
+        await tester.pump();
+      }
+      await tester.pumpWidget(buildTestWidget(fullRepro));
+      await tester.pumpAndSettle();
+
+      await tester.tapAt(const Offset(50, 50));
+      await tester.pump();
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.meta);
+      await tester.sendKeyEvent(LogicalKeyboardKey.keyA);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.meta);
+      await tester.pump();
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.meta);
+      await tester.sendKeyEvent(LogicalKeyboardKey.keyC);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.meta);
+      await tester.pump();
+
+      expect(clipboardText, isNotNull);
+      expect(clipboardText, contains('Chunk 4'));
+    });
+
+    testWidgets('STREAMED full repro, then drag-select + copy', (tester) async {
+      tester.view.physicalSize = const Size(800, 8000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      const chunkSize = 120;
+      for (var end = chunkSize; end < fullRepro.length; end += chunkSize) {
+        await tester.pumpWidget(
+          buildTestWidget(fullRepro.substring(0, end)),
+        );
+        await tester.pump();
+      }
+      await tester.pumpWidget(buildTestWidget(fullRepro));
+      await tester.pumpAndSettle();
+
+      final gesture = await tester.startGesture(
+        const Offset(10, 10),
+        kind: PointerDeviceKind.mouse,
       );
       await tester.pump();
-    }
-    await tester.pumpWidget(buildTestWidget(fullRepro));
-    await tester.pumpAndSettle();
-
-    await tester.tapAt(const Offset(50, 50));
-    await tester.pump();
-    await tester.sendKeyDownEvent(LogicalKeyboardKey.meta);
-    await tester.sendKeyEvent(LogicalKeyboardKey.keyA);
-    await tester.sendKeyUpEvent(LogicalKeyboardKey.meta);
-    await tester.pump();
-    await tester.sendKeyDownEvent(LogicalKeyboardKey.meta);
-    await tester.sendKeyEvent(LogicalKeyboardKey.keyC);
-    await tester.sendKeyUpEvent(LogicalKeyboardKey.meta);
-    await tester.pump();
-
-    expect(clipboardText, isNotNull);
-    expect(clipboardText, contains('Chunk 4'));
-  });
-
-  testWidgets('STREAMED full repro, then drag-select + copy', (tester) async {
-    tester.view.physicalSize = const Size(800, 8000);
-    tester.view.devicePixelRatio = 1.0;
-    addTearDown(tester.view.reset);
-
-    const chunkSize = 120;
-    for (var end = chunkSize; end < fullRepro.length; end += chunkSize) {
-      await tester.pumpWidget(
-        buildTestWidget(fullRepro.substring(0, end)),
-      );
+      for (var y = 50.0; y <= 4000; y += 100) {
+        await gesture.moveTo(Offset(400, y));
+        await tester.pump();
+      }
+      await gesture.up();
       await tester.pump();
-    }
-    await tester.pumpWidget(buildTestWidget(fullRepro));
-    await tester.pumpAndSettle();
 
-    final gesture = await tester.startGesture(
-      const Offset(10, 10),
-      kind: PointerDeviceKind.mouse,
-    );
-    await tester.pump();
-    for (var y = 50.0; y <= 4000; y += 100) {
-      await gesture.moveTo(Offset(400, y));
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.meta);
+      await tester.sendKeyEvent(LogicalKeyboardKey.keyC);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.meta);
       await tester.pump();
-    }
-    await gesture.up();
-    await tester.pump();
 
-    await tester.sendKeyDownEvent(LogicalKeyboardKey.meta);
-    await tester.sendKeyEvent(LogicalKeyboardKey.keyC);
-    await tester.sendKeyUpEvent(LogicalKeyboardKey.meta);
-    await tester.pump();
-
-    expect(clipboardText, isNotNull);
-    expect(clipboardText, contains('Chunk 4'));
+      expect(clipboardText, isNotNull);
+      expect(clipboardText, contains('Chunk 4'));
+    });
   });
-});
 }
 
 const fullRepro = '''

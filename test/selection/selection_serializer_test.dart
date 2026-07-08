@@ -827,7 +827,8 @@ void main() {
   test('full document with thematic breaks, heading, and list', () {
     const input =
         '---\n\n## Header\n\n1. **Some list item**\n   Some text.\n\n---';
-    const expected = '---\n\n## Header\n1. **Some list item**\nSome text.\n---';
+    const expected =
+        '---\n\n## Header\n\n1. **Some list item**\nSome text.\n\n---';
 
     final controller = ParserController();
     final snapshot = controller.parse(input);

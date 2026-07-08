@@ -144,7 +144,24 @@ class SelectionSerializer {
 
       if (lastRect != null) {
         final topDiff = fragment.rect.top - lastRect.top;
-        if (topDiff > newlineThreshold) {
+        // Different source blocks are never inline continuations of each
+        // other, so always separate them; identical(null, null) keeps
+        // same-line unattributed spans (and same-block leaves) joined.
+        final blockChanged =
+            !identical(attachment?.blockNode, lastAttachmentUsed?.blockNode);
+        if (blockChanged) {
+          // Blank line between blocks: canonical markdown block separation
+          // (a single newline would merge adjacent paragraphs on re-render).
+          // Exception: rows of the same table, where a blank line would
+          // terminate the table.
+          final wantNewlines = _inSameTable(
+            attachment?.blockNode,
+            lastAttachmentUsed?.blockNode,
+          )
+              ? 1
+              : 2;
+          _ensureTrailingNewlines(buffer, wantNewlines);
+        } else if (topDiff > newlineThreshold) {
           buffer.writeln();
         }
       }
@@ -157,6 +174,36 @@ class SelectionSerializer {
     }
 
     return buffer.toString();
+  }
+
+  /// Appends newlines so [buffer] ends with exactly [count] of them (never
+  /// removes existing ones).
+  static void _ensureTrailingNewlines(StringBuffer buffer, int count) {
+    final current = buffer.toString();
+    var trailing = 0;
+    for (var i = current.length - 1;
+        i >= 0 && current[i] == '\n' && trailing < count;
+        i--) {
+      trailing++;
+    }
+    for (var i = trailing; i < count; i++) {
+      buffer.write('\n');
+    }
+  }
+
+  static bool _inSameTable(CmarkNode? a, CmarkNode? b) {
+    final tableA = _ancestorTable(a);
+    if (tableA == null) return false;
+    return identical(tableA, _ancestorTable(b));
+  }
+
+  static CmarkNode? _ancestorTable(CmarkNode? node) {
+    var current = node;
+    while (current != null) {
+      if (current.type == CmarkNodeType.table) return current;
+      current = current.parent;
+    }
+    return null;
   }
 
   /// Emits markdown for blocks that sit between two selected siblings even if

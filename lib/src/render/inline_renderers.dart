@@ -4,6 +4,8 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter_math_fork/flutter_math.dart';
 import 'package:pixel_snap/material.dart';
 
+export 'gesture_recognizer_owner.dart' show GestureRecognizerOwner;
+
 import '../theme/cmark_theme.dart';
 import 'math_parser_settings.dart';
 
@@ -31,7 +33,8 @@ class InlineRenderContext {
     this.mathInlineBuilder,
     this.onLinkTap,
     this.renderImages = false,
-  });
+    List<GestureRecognizer>? linkRecognizerSink,
+  }) : _linkRecognizerSink = linkRecognizerSink;
 
   final CmarkThemeData theme;
   final double textScaleFactor;
@@ -42,6 +45,32 @@ class InlineRenderContext {
   /// Whether to render images. When false, images are replaced with their
   /// alt text (or URL if no alt text is available).
   final bool renderImages;
+
+  /// Where [TapGestureRecognizer]s created for links get appended, so the
+  /// caller that owns this render pass can dispose them at the right time.
+  /// See [withLinkRecognizerSink] and [GestureRecognizerOwner].
+  final List<GestureRecognizer>? _linkRecognizerSink;
+
+  /// Returns a shallow copy of this context whose link tap recognizers are
+  /// appended to [sink] instead of being silently dropped (undisposed).
+  ///
+  /// Callers that build a single standalone paragraph of rich text (one
+  /// `Text.rich`/`RichText` per call - see `_buildTextualBlock` and the
+  /// table cell renderer in `block_renderers.dart`) should pass a fresh,
+  /// empty list here and wrap the resulting widget in
+  /// [GestureRecognizerOwner] with that same list, so the recognizers get
+  /// disposed when the paragraph rebuilds or unmounts.
+  InlineRenderContext withLinkRecognizerSink(List<GestureRecognizer> sink) {
+    return InlineRenderContext(
+      theme: theme,
+      textScaleFactor: textScaleFactor,
+      footnoteReferenceBuilder: footnoteReferenceBuilder,
+      mathInlineBuilder: mathInlineBuilder,
+      onLinkTap: onLinkTap,
+      renderImages: renderImages,
+      linkRecognizerSink: sink,
+    );
+  }
 }
 
 /// Renders all inline children of [parent] using [baseStyle].
@@ -125,30 +154,50 @@ InlineSpan _renderInlineNode(
           ? <InlineSpan>[TextSpan(text: url, style: merged)]
           : children;
 
-      // Apply click cursor to all children (no recognizer - GestureDetector handles taps)
+      // Attach the tap recognizer (when a handler is supplied) directly to
+      // the link's own TextSpans, instead of wrapping them in a WidgetSpan +
+      // GestureDetector + nested Text.rich.
+      //
+      // Why this matters: a WidgetSpan is an atomic inline "box" from the
+      // surrounding paragraph's line-breaking algorithm - it can never be
+      // split across lines. A nested Text.rich inside one can still soft-wrap
+      // *internally*, but then the WidgetSpan's height may span several of
+      // the outer paragraph's line boxes (e.g. a long bare URL used as link
+      // text). The outer paragraph (see `_buildTextualBlock`) renders with
+      // `forceStrutHeight: true` so inline code aligns across mixed
+      // prose/code lines; that setting forces every outer line box to the
+      // strut's single-line height regardless of taller inline content. A
+      // multi-line WidgetSpan's excess height is therefore silently ignored
+      // by the outer paragraph layout, and the link paints downward past its
+      // allotted line, overlapping whatever content follows it.
+      //
+      // Attaching the recognizer directly to the TextSpan instead means the
+      // link's characters are genuinely part of the *same* paragraph/line-
+      // breaking pass as the rest of the prose: long link text wraps exactly
+      // like ordinary text (including mid-token breaks in a long bare URL,
+      // which has no spaces to wrap at otherwise), each real line respects
+      // the outer forced strut height individually, and nothing can ever
+      // measure taller than one line.
+      //
+      // TextSpan has no disposal hook of its own, so the recognizer we
+      // create here must be tracked and disposed by whoever owns this call -
+      // see [InlineRenderContext.withLinkRecognizerSink] and
+      // [GestureRecognizerOwner], used by `_buildTextualBlock` and the table
+      // cell renderer in block_renderers.dart.
+      GestureRecognizer? recognizer;
+      if (context.onLinkTap != null) {
+        recognizer = TapGestureRecognizer()
+          ..onTap = () => context.onLinkTap!(url, title);
+        context._linkRecognizerSink?.add(recognizer);
+      }
+
       final linkedChildren = _applyLinkBehavior(
         spanChildren,
         SystemMouseCursors.click,
-        null,
+        recognizer,
       );
 
-      // Wrap in WidgetSpan + GestureDetector for tap handling, passing a
-      // recognizer to TextSpan would require managing the recognizer's
-      // lifecycle. SelectableText.rich would make the URL text not selectable
-      // and not tappable on mobile.
-      return WidgetSpan(
-        alignment: PlaceholderAlignment.baseline,
-        baseline: TextBaseline.alphabetic,
-        child: GestureDetector(
-          onTap: context.onLinkTap == null
-              ? null
-              : () => context.onLinkTap!(url, title),
-          child: Text.rich(
-            TextSpan(style: merged, children: linkedChildren),
-            textScaler: TextScaler.linear(context.textScaleFactor),
-          ),
-        ),
-      );
+      return TextSpan(style: merged, children: linkedChildren);
     case CmarkNodeType.image:
       final alt = _collectPlainText(node) ?? node.linkData.title;
       final url = node.linkData.url;

@@ -3,6 +3,7 @@ import 'package:cmark_gfm_widget/src/selection/markdown_selectable_paragraph.dar
 import 'package:cmark_gfm_widget/src/widgets/source_markdown_registry.dart';
 
 import '../parser/document_snapshot.dart';
+import 'package:flutter/gestures.dart' show GestureRecognizer;
 import 'package:flutter_math_fork/flutter_math.dart';
 import 'package:pixel_snap/material.dart';
 
@@ -285,11 +286,19 @@ Widget _buildTextualBlock(
   EdgeInsets? blockSpacing,
 }) {
   final effectiveSpacing = blockSpacing ?? context.theme.blockSpacing;
+  // Fresh per-call sink for any link tap recognizers created while rendering
+  // this block's inline content; ownership is handed to GestureRecognizerOwner
+  // below so they get disposed at the right time (see
+  // InlineRenderContext.withLinkRecognizerSink).
+  final linkRecognizers = <GestureRecognizer>[];
   TextSpan textSpan;
   if (literal != null) {
     textSpan = TextSpan(text: literal, style: style);
   } else {
-    final children = renderInlineChildren(node, context.inlineContext, style);
+    final inlineContext = context.inlineContext.withLinkRecognizerSink(
+      linkRecognizers,
+    );
+    final children = renderInlineChildren(node, inlineContext, style);
     if (children.isEmpty) {
       textSpan = TextSpan(text: '', style: style);
     } else {
@@ -308,11 +317,18 @@ Widget _buildTextualBlock(
   // monospace run determine the line box while mixed prose/code lines use the
   // full body font metrics. Keeping every textual block on the paragraph style's
   // line box makes inline code align consistently across list items.
-  final widget = Text.rich(
+  Widget widget = Text.rich(
     effectiveSpan,
     strutStyle: StrutStyle.fromTextStyle(style, forceStrutHeight: true),
     textScaler: TextScaler.linear(context.textScaleFactor),
   );
+
+  if (linkRecognizers.isNotEmpty) {
+    widget = GestureRecognizerOwner(
+      recognizers: linkRecognizers,
+      child: widget,
+    );
+  }
 
   return _wrapWithSpacing(widget, effectiveSpacing);
 }
@@ -588,9 +604,12 @@ Widget _buildTable(CmarkNode node, BlockRenderContext context) {
       final baseStyle = rowNode.tableRowData.isHeader
           ? context.theme.tableHeaderTextStyle
           : context.theme.tableBodyTextStyle;
+      // Fresh per-cell sink for any link tap recognizers (see
+      // InlineRenderContext.withLinkRecognizerSink / GestureRecognizerOwner).
+      final cellLinkRecognizers = <GestureRecognizer>[];
       final cellChildren = renderInlineChildren(
         cellNode,
-        context.inlineContext,
+        context.inlineContext.withLinkRecognizerSink(cellLinkRecognizers),
         baseStyle,
       );
       final textSpan = TextSpan(
@@ -612,6 +631,13 @@ Widget _buildTable(CmarkNode node, BlockRenderContext context) {
               textAlign: textAlign,
               textScaler: TextScaler.linear(context.textScaleFactor),
             );
+
+      if (cellLinkRecognizers.isNotEmpty) {
+        alignedChild = GestureRecognizerOwner(
+          recognizers: cellLinkRecognizers,
+          child: alignedChild,
+        );
+      }
 
       if (context.selectable) {
         alignedChild = SourceAwareWidget(

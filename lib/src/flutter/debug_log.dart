@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 const bool _kForceLogs = false;
-const bool kIsCopyDiagnosticsEnabled = true;
+const bool kIsCopyDiagnosticsEnabled = false;
 
 void debugLog(String Function() messageBuilder) {
   if (!_kForceLogs || !kDebugMode) {

@@ -25,6 +25,7 @@ import 'package:vector_math/vector_math_64.dart';
 
 import 'package:cmark_gfm/cmark_gfm.dart';
 
+import '../widgets/selection_scope.dart';
 import '../widgets/source_markdown_registry.dart';
 import '../selection/leaf_text_registry.dart';
 import '../selection/markdown_selection_model.dart';
@@ -757,6 +758,7 @@ class SelectableRegionState extends State<SelectableRegion>
   Offset? _doubleTapOffset;
   void _startNewMouseSelectionGesture(TapDragDownDetails details) {
     _lastPointerDeviceKind = details.kind;
+    _updateSelectAllScope(details.globalPosition);
     switch (_getEffectiveConsecutiveTapCount(details.consecutiveTapCount)) {
       case 1:
         _focusNode.requestFocus();
@@ -1050,6 +1052,7 @@ class SelectableRegionState extends State<SelectableRegion>
   void _handleTouchLongPressStart(LongPressStartDetails details) {
     HapticFeedback.selectionClick();
     _focusNode.requestFocus();
+    _updateSelectAllScope(details.globalPosition);
     _selectWordAt(offset: details.globalPosition);
     _selectionStatusNotifier.value = SelectableRegionSelectionStatus.changing;
     // Platforms besides Android will show the text selection handles when
@@ -1096,6 +1099,7 @@ class SelectableRegionState extends State<SelectableRegion>
     final bool toolbarIsVisible = _selectionOverlay?.toolbarIsVisible ?? false;
     _lastSecondaryTapDownPosition = details.globalPosition;
     _focusNode.requestFocus();
+    _updateSelectAllScope(details.globalPosition);
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
       case TargetPlatform.fuchsia:
@@ -1927,10 +1931,58 @@ class SelectableRegionState extends State<SelectableRegion>
     }
   }
 
+  /// The [SelectionScope] that received the most recent pointer down, if any.
+  ///
+  /// Select All (keyboard shortcut or context menu) is confined to this scope
+  /// so that "select all" inside e.g. a chat message selects that message, not
+  /// the entire conversation. Drag selection is unaffected.
+  RenderSelectionScope? _selectAllScope;
+
+  void _updateSelectAllScope(Offset globalPosition) {
+    RenderSelectionScope? scope;
+    final RenderObject? renderObject = context.findRenderObject();
+    if (renderObject is RenderBox && renderObject.attached) {
+      final BoxHitTestResult result = BoxHitTestResult();
+      renderObject.hitTest(
+        result,
+        position: renderObject.globalToLocal(globalPosition),
+      );
+      for (final HitTestEntry<HitTestTarget> entry in result.path) {
+        final HitTestTarget target = entry.target;
+        if (target is RenderSelectionScope) {
+          // The hit-test path is deepest-first, so the first match is the
+          // innermost scope.
+          scope = target;
+          break;
+        }
+      }
+    }
+    _selectAllScope = scope;
+    copyDiagnosticLog(
+        () => 'select-all scope pointer=${scope == null ? "none" : "found"}');
+  }
+
   @override
   void selectAll([SelectionChangedCause? cause]) {
     clearSelection();
-    _selectable?.dispatchSelectionEvent(const SelectAllSelectionEvent());
+    final RenderSelectionScope? scope = _selectAllScope;
+    copyDiagnosticLog(() =>
+        'select-all mode=${scope != null && scope.attached ? "scoped" : "region"}');
+    if (scope != null && scope.attached && scope.hasSize) {
+      // Scoped Select All: select from the scope's top-left to its
+      // bottom-right using the same edge-update machinery as drag selection.
+      // The region and its scrollables stay the selection owners, so
+      // everything else (copy, handles, autoscroll) behaves as usual.
+      final Rect globalRect = MatrixUtils.transformRect(
+        scope.getTransformTo(null),
+        Offset.zero & scope.size,
+      ).deflate(0.5);
+      _selectStartTo(offset: globalRect.topLeft);
+      _selectEndTo(offset: globalRect.bottomRight);
+      _finalizeSelection();
+    } else {
+      _selectable?.dispatchSelectionEvent(const SelectAllSelectionEvent());
+    }
     if (cause == SelectionChangedCause.toolbar) {
       _showToolbar();
       _showHandles();
@@ -2049,29 +2101,38 @@ class SelectableRegionState extends State<SelectableRegion>
     }
     return CompositedTransformTarget(
       link: _toolbarLayerLink,
-      child: RawGestureDetector(
-        gestures: _gestureRecognizers,
+      // Observe pointer-down before gesture-arena resolution. Interactive tile
+      // children (links, code-block buttons, etc.) may win the gesture and
+      // prevent SelectableRegion's recognizers from firing, but Select All
+      // should still target the tile the user most recently clicked.
+      child: Listener(
         behavior: HitTestBehavior.translucent,
-        excludeFromSemantics: true,
-        child: Actions(
-          actions: _actions,
-          child: Shortcuts(
-            shortcuts: const <ShortcutActivator, Intent>{
-              // Ensure Cmd+C / Ctrl+C is handled locally when this region has focus
-              SingleActivator(LogicalKeyboardKey.keyC, meta: true):
-                  CopySelectionTextIntent.copy,
-              SingleActivator(LogicalKeyboardKey.keyC, control: true):
-                  CopySelectionTextIntent.copy,
-              // Select all
-              SingleActivator(LogicalKeyboardKey.keyA, meta: true):
-                  SelectAllTextIntent(SelectionChangedCause.keyboard),
-              SingleActivator(LogicalKeyboardKey.keyA, control: true):
-                  SelectAllTextIntent(SelectionChangedCause.keyboard),
-            },
-            child: Focus.withExternalFocusNode(
-              includeSemantics: false,
-              focusNode: _focusNode,
-              child: result,
+        onPointerDown: (PointerDownEvent event) =>
+            _updateSelectAllScope(event.position),
+        child: RawGestureDetector(
+          gestures: _gestureRecognizers,
+          behavior: HitTestBehavior.translucent,
+          excludeFromSemantics: true,
+          child: Actions(
+            actions: _actions,
+            child: Shortcuts(
+              shortcuts: const <ShortcutActivator, Intent>{
+                // Ensure Cmd+C / Ctrl+C is handled locally when this region has focus
+                SingleActivator(LogicalKeyboardKey.keyC, meta: true):
+                    CopySelectionTextIntent.copy,
+                SingleActivator(LogicalKeyboardKey.keyC, control: true):
+                    CopySelectionTextIntent.copy,
+                // Select all
+                SingleActivator(LogicalKeyboardKey.keyA, meta: true):
+                    SelectAllTextIntent(SelectionChangedCause.keyboard),
+                SingleActivator(LogicalKeyboardKey.keyA, control: true):
+                    SelectAllTextIntent(SelectionChangedCause.keyboard),
+              },
+              child: Focus.withExternalFocusNode(
+                includeSemantics: false,
+                focusNode: _focusNode,
+                child: result,
+              ),
             ),
           ),
         ),

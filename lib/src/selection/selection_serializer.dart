@@ -224,7 +224,11 @@ class SelectionSerializer {
     var sibling = prevNode.next;
     while (sibling != null && !identical(sibling, currNode)) {
       if (sibling.type == CmarkNodeType.thematicBreak) {
-        buffer.writeln('---');
+        // Keep intermediate blocks consistent with the fragment writer:
+        // blocks are separated by blank lines.
+        _ensureTrailingNewlines(buffer, 2);
+        buffer.write('---');
+        _ensureTrailingNewlines(buffer, 2);
       }
       sibling = sibling.next;
     }

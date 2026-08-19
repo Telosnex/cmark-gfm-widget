@@ -129,6 +129,13 @@ void main() {
       expect(model.plainText, 'first line\nsecond line');
     });
 
+    test('HTML br projects as a newline and serializes back to HTML', () {
+      final model = _modelFor('first<br>second');
+
+      expect(model.plainText, 'first\nsecond');
+      expect(model.toMarkdown(0, model.length), 'first<br>second');
+    });
+
     test('heading preserves level markers', () {
       final model = _modelFor('## Header');
       final result = model.toMarkdown(0, model.length);

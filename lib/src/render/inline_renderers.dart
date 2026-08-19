@@ -6,6 +6,7 @@ import 'package:pixel_snap/material.dart';
 
 export 'gesture_recognizer_owner.dart' show GestureRecognizerOwner;
 
+import '../html_inline.dart';
 import '../theme/cmark_theme.dart';
 import 'math_parser_settings.dart';
 
@@ -124,7 +125,10 @@ InlineSpan _renderInlineNode(
         style: restored,
       );
     case CmarkNodeType.htmlInline:
-      return TextSpan(text: node.content.toString(), style: baseStyle);
+      return TextSpan(
+        text: inlineHtmlPlainText(node.content.toString()),
+        style: baseStyle,
+      );
     case CmarkNodeType.emph:
       final merged = baseStyle.merge(context.theme.emphasisTextStyle);
       return TextSpan(

@@ -2,6 +2,8 @@ import 'dart:math' as math;
 
 import 'package:cmark_gfm/cmark_gfm.dart';
 
+import '../html_inline.dart';
+
 /// Builds a mapping between the plain-text representation of a block and
 /// individual AST nodes, and serializes selected ranges back to Markdown.
 class MarkdownSelectionModel {
@@ -51,9 +53,13 @@ class MarkdownSelectionModel {
       case CmarkNodeType.text:
       case CmarkNodeType.softbreak:
       case CmarkNodeType.linebreak:
-      case CmarkNodeType.htmlInline:
       case CmarkNodeType.customInline:
         return _substring(range, start, end);
+      case CmarkNodeType.htmlInline:
+        final literal = node.content.toString();
+        return isHtmlLineBreak(literal)
+            ? literal
+            : _substring(range, start, end);
       case CmarkNodeType.code:
         final literal = _substring(range, start, end);
         if (literal.isEmpty) {
@@ -316,9 +322,11 @@ class _PlainTextBuilder {
     final start = buffer.length;
     switch (node.type) {
       case CmarkNodeType.text:
-      case CmarkNodeType.htmlInline:
       case CmarkNodeType.customInline:
         buffer.write(node.content.toString());
+        break;
+      case CmarkNodeType.htmlInline:
+        buffer.write(inlineHtmlPlainText(node.content.toString()));
         break;
       case CmarkNodeType.softbreak:
       case CmarkNodeType.linebreak:

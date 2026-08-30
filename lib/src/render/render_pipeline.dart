@@ -37,7 +37,8 @@ class RenderOptions {
   /// alt text (or URL if no alt text is available). Defaults to true.
   final bool renderImages;
   
-  /// Optional leading spans to prepend to the first text block.
+  /// Optional leading spans to prepend to the first rendered block. For a
+  /// leading list, they appear before its first list marker.
   final List<InlineSpan> leadingSpans;
 }
 

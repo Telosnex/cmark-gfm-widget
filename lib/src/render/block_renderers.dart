@@ -461,20 +461,29 @@ Widget _buildList(
   final data = node.listData;
   final ordered = data.listType == CmarkListType.ordered;
   final bullets = <Widget>[];
+  // Leading spans belong at the start of the document block. If they flow
+  // through the regular list-item context, every item receives a copy after
+  // its marker (`1. <glyph>...`). Render them once before the first marker and
+  // remove them from all item-content contexts instead.
+  final itemContentContext = _withoutLeadingSpans(context);
   var item = node.firstChild;
   var index = 0;
   while (item != null) {
+    final itemLeadingSpans = index == 0
+        ? context.leadingSpans
+        : const <InlineSpan>[];
     index += 1;
     // Use each item's original number (listData.start) instead of calculating
     final itemNumber = ordered ? item.listData.start : index;
     bullets.add(
       _buildListItem(
         item,
-        context,
+        itemContentContext,
         ordered: ordered,
         index: itemNumber == 0 ? index : itemNumber,
         tight: data.tight,
         level: level,
+        leadingSpansBeforeMarker: itemLeadingSpans,
       ),
     );
 
@@ -493,6 +502,7 @@ Widget _buildListItem(
   required int index,
   required bool tight,
   required int level,
+  required List<InlineSpan> leadingSpansBeforeMarker,
 }) {
   final bulletText = ordered ? '$index. ' : '\u2022 ';
   final children = <Widget>[];
@@ -512,6 +522,18 @@ Widget _buildListItem(
   final resolvedLevel = level < 1 ? 1 : level;
 
   final rowChildren = <Widget>[
+    if (leadingSpansBeforeMarker.isNotEmpty)
+      Text.rich(
+        TextSpan(
+          style: context.theme.paragraphTextStyle,
+          children: leadingSpansBeforeMarker,
+        ),
+        strutStyle: StrutStyle.fromTextStyle(
+          context.theme.paragraphTextStyle,
+          forceStrutHeight: true,
+        ),
+        textScaler: TextScaler.linear(context.textScaleFactor),
+      ),
     Text(
       bulletText,
       style: ordered
@@ -535,6 +557,21 @@ Widget _buildListItem(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: rowChildren,
     ),
+  );
+}
+
+BlockRenderContext _withoutLeadingSpans(BlockRenderContext context) {
+  if (context.leadingSpans.isEmpty) return context;
+  return BlockRenderContext(
+    theme: context.theme,
+    inlineContext: context.inlineContext,
+    selectable: context.selectable,
+    textScaleFactor: context.textScaleFactor,
+    renderFootnoteDefinitions: context.renderFootnoteDefinitions,
+    tableOptions: context.tableOptions,
+    codeBlockWrapper: context.codeBlockWrapper,
+    mathBlockBuilder: context.mathBlockBuilder,
+    onLinkTap: context.onLinkTap,
   );
 }
 

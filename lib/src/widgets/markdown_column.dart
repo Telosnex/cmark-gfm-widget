@@ -56,7 +56,8 @@ class CmarkMarkdownColumn extends StatefulWidget {
   /// Callback when selection changes (only used when selectable=true).
   final void Function(SelectedContent?)? onSelectionChanged;
 
-  /// Optional leading spans to prepend to the first text block.
+  /// Optional leading spans to prepend to the first rendered block. For a
+  /// leading list, they appear before its first list marker.
   final List<InlineSpan> leadingSpans;
 
   /// Whether to render images. When false, images are replaced with their

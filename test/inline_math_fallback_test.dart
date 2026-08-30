@@ -108,4 +108,44 @@ with many ordinary night street scenes around **0.2–2 cd/m²**.
     expect(mathWidgets[2].parseError, isNull);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('multiline bracket math keeps a standalone plus in LaTeX',
+      (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: CmarkMarkdownColumn(
+            parserOptions: CmarkParserOptions(
+              enableMath: true,
+              mathOptions: CmarkMathOptions(
+                allowBracketDelimiters: true,
+              ),
+            ),
+            data: r'''
+\[
+oldOutputCost = T_{out} \times oldOutputPrice
+\]
+
+\[
+oldInputCacheCost = publishedCost - oldOutputCost
+\]
+
+\[
+newCost \approx
+oldOutputCost \frac{newOutputPrice}{oldOutputPrice}
++
+oldInputCacheCost \frac{newInputPrice}{oldInputPrice}
+\]
+''',
+          ),
+        ),
+      ),
+    );
+
+    final mathWidgets = tester.widgetList<Math>(find.byType(Math)).toList();
+
+    expect(mathWidgets, hasLength(3));
+    expect(mathWidgets.map((math) => math.parseError), everyElement(isNull));
+    expect(tester.takeException(), isNull);
+  });
 }

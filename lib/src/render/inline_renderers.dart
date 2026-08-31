@@ -360,12 +360,16 @@ InlineSpan _defaultInlineMathSpanBuilder(
     );
   }
 
-  // Do NOT wrap in SingleChildScrollView here.
-  // _RenderSingleChildViewport does not implement computeDryBaseline.
-  // When this WidgetSpan appears inside a Table cell that uses
-  // IntrinsicColumnWidth, the intrinsic-dimension computation calls
-  // getDryBaseline on the WidgetSpan, which propagates through to
-  // _RenderSingleChildViewport and crashes.
+  // Inline TeX is one indivisible placeholder, so it cannot wrap with the
+  // surrounding paragraph. Give expressions wider than their available line
+  // width a horizontal viewport instead of letting flutter_math's RenderLine
+  // overflow and clip. PlaceholderAlignment.middle is important here: unlike
+  // baseline alignment it does not ask _RenderSingleChildViewport for a dry
+  // baseline (which viewports do not implement).
+  child = SingleChildScrollView(
+    scrollDirection: Axis.horizontal,
+    child: IgnorePointer(child: child),
+  );
 
   return WidgetSpan(
     // A TeX box with no depth (for example `1048576 = 2^{20}`) reports its
@@ -375,7 +379,7 @@ InlineSpan _defaultInlineMathSpanBuilder(
     alignment: PlaceholderAlignment.middle,
     child: InlineMathSelectable(
       literal: literal,
-      child: IgnorePointer(child: child),
+      child: child,
     ),
   );
 }

@@ -29,7 +29,8 @@ void main() {
     final rootSpan = paragraph.textSpan! as TextSpan;
     final widgetSpan = rootSpan.children!.whereType<WidgetSpan>().single;
     final inlineMath = widgetSpan.child as InlineMathSelectable;
-    final ignorePointer = inlineMath.child as IgnorePointer;
+    final scrollView = inlineMath.child as SingleChildScrollView;
+    final ignorePointer = scrollView.child! as IgnorePointer;
     final math = ignorePointer.child as Math;
 
     expect(inlineMath.literal, literal);

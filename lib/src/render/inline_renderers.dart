@@ -368,9 +368,11 @@ InlineSpan _defaultInlineMathSpanBuilder(
   // _RenderSingleChildViewport and crashes.
 
   return WidgetSpan(
-    alignment:
-        display ? PlaceholderAlignment.middle : PlaceholderAlignment.baseline,
-    baseline: display ? null : TextBaseline.alphabetic,
+    // A TeX box with no depth (for example `1048576 = 2^{20}`) reports its
+    // bottom edge as its alphabetic baseline. Baseline-aligning that box hangs
+    // the whole expression above the prose baseline, making it look top-
+    // aligned. Center the visual math box in the surrounding line instead.
+    alignment: PlaceholderAlignment.middle,
     child: InlineMathSelectable(
       literal: literal,
       child: IgnorePointer(child: child),

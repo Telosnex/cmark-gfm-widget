@@ -657,15 +657,24 @@ Widget _buildTable(CmarkNode node, BlockRenderContext context) {
 
       final textAlign = _textAlignForCell(columnAlignments[columnIndex]);
       final plainText = textSpan.toPlainText();
+      // Keep code-only cells on the table's prose line box. Without a forced
+      // strut, the smaller monospace run defines a shorter paragraph whose
+      // top is aligned with neighboring cells, so it appears too high.
+      final strutStyle = StrutStyle.fromTextStyle(
+        baseStyle,
+        forceStrutHeight: true,
+      );
       Widget alignedChild = context.selectable
           ? Text.rich(
               textSpan,
               textAlign: textAlign,
+              strutStyle: strutStyle,
               textScaler: TextScaler.linear(context.textScaleFactor),
             )
           : RichText(
               text: textSpan,
               textAlign: textAlign,
+              strutStyle: strutStyle,
               textScaler: TextScaler.linear(context.textScaleFactor),
             );
 

@@ -53,6 +53,18 @@ CmarkMarkdownColumn(
 );
 ```
 
+## Selection and copying
+
+Ordinary Copy (and selection-change callbacks) returns selected displayed text,
+not reconstructed Markdown. It does not add list numbers, backticks, heading
+prefixes, emphasis markers, or link destinations to partial selections.
+
+Selected visible list markers, paragraph boundaries, code line breaks, and math
+text alternatives are retained. Multiple table cells use tabs and newlines.
+Select All changes the selected extent, not the copy format; `SelectionScope`
+can limit it to one message. Applications should use their source data or table
+metadata for explicit Markdown/export actions.
+
 ## Theming
 
 Wrap any subtree with `CmarkTheme` to override styles or provide a custom

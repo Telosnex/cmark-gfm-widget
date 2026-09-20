@@ -23,13 +23,9 @@ import 'package:flutter/widgets.dart' as framework
     show MultiSelectableSelectionContainerDelegate;
 import 'package:vector_math/vector_math_64.dart';
 
-import 'package:cmark_gfm/cmark_gfm.dart';
-
 import '../widgets/selection_scope.dart';
 import '../widgets/source_markdown_registry.dart';
-import '../selection/leaf_text_registry.dart';
-import '../selection/markdown_selection_model.dart';
-import '../selection/selection_serializer.dart';
+import '../selection/displayed_text_serializer.dart';
 // Examples can assume:
 // late GlobalKey key;
 
@@ -3016,8 +3012,8 @@ abstract class MultiSelectableSelectionContainerDelegate
   /// Scrollables insert a SelectionContainer between this region and its
   /// content (`_ScrollableSelectionHandler`). That container registers as a
   /// single Selectable whose getSelectedContent() joins every descendant's
-  /// text with no separators — which destroys per-block markdown
-  /// serialization. Descend into such containers to reach the leaf
+  /// text with no separators — which destroys structural boundaries.
+  /// Descend into such containers to reach the leaf
   /// selectables, which carry precise selections and sit beneath
   /// SourceAwareWidget render objects.
   List<(Selectable, SelectedContent, Rect)> _collectSelections(
@@ -3060,66 +3056,10 @@ abstract class MultiSelectableSelectionContainerDelegate
     ];
   }
 
-  /// Maps the concatenated leaf texts of [group] onto [blockNode]'s
-  /// plain-text projection. Returns a single fragment carrying the covered
-  /// [SelectionRange], or null when the projection doesn't contain the leaf
-  /// texts (e.g. widget-based content with placeholder characters).
-  SelectionFragment? _buildRangedBlockFragment(
-    MarkdownSourceAttachment attachment,
-    CmarkNode blockNode,
-    List<(SelectedContent, Rect)> group,
-  ) {
-    final model = MarkdownSelectionModel(blockNode);
-    final full = model.plainText;
-    var cursor = 0;
-    var start = -1;
-    var end = -1;
-    Rect? union;
-    for (final (data, rect) in group) {
-      final text = data.plainText;
-      if (text.isEmpty) {
-        continue;
-      }
-      final index = full.indexOf(text, cursor);
-      if (index < 0) {
-        // Rendered list markers (•, 1., …) are layout decoration; the
-        // plain-text projection intentionally omits them, and the model
-        // re-emits canonical markers during toMarkdown.
-        if (_isListMarkerText(text)) {
-          continue;
-        }
-        return null;
-      }
-      if (start < 0) {
-        start = index;
-      }
-      end = index + text.length;
-      cursor = end;
-      union = union == null ? rect : union.expandToInclude(rect);
-    }
-    if (start < 0 || end <= start || union == null) {
-      return null;
-    }
-    return SelectionFragment(
-      rect: union,
-      plainText: full.substring(start, end),
-      contentLength: full.length,
-      range: SelectionRange(start, end),
-      attachment: attachment,
-    );
-  }
-
-  static final RegExp _listMarkerPattern =
-      RegExp(r'^\s*(?:[\u2022\u25E6\u2023\u25AA\u00B7\-\*]|\d{1,4}[.)])\s*$');
-
-  static bool _isListMarkerText(String text) =>
-      _listMarkerPattern.hasMatch(text);
-
   /// Whether [container] is the SelectionContainer that Scrollable inserts
   /// between a selection registrar and its content. Only these are safe to
   /// flatten: text-level containers (e.g. _SelectableTextContainerDelegate)
-  /// must stay intact so leaf fragments match whole paragraphs in the leaf
-  /// text registry.
+  /// must stay intact to preserve their own selected-text contract.
   static bool _isScrollableInjected(SelectionContainer container) {
     return container.delegate.runtimeType.toString().contains('Scrollable');
   }
@@ -3134,9 +3074,7 @@ abstract class MultiSelectableSelectionContainerDelegate
     return null;
   }
 
-  /// Try to find the MarkdownSourceAttachment for a selectable by walking
-  /// up the render tree.
-  MarkdownSourceAttachment? _findAttachment(Selectable selectable) {
+  RenderObject? _renderObjectFor(Selectable selectable) {
     RenderObject? renderObject;
 
     if (selectable is RenderObject) {
@@ -3154,8 +3092,49 @@ abstract class MultiSelectableSelectionContainerDelegate
       }
     }
 
-    if (renderObject == null) return null;
-    return SourceMarkdownRegistry.instance.findAttachment(renderObject);
+    return renderObject;
+  }
+
+  /// Try to find the MarkdownSourceAttachment for a selectable by walking
+  /// up the render tree.
+  MarkdownSourceAttachment? _findAttachment(Selectable selectable) {
+    final renderObject = _renderObjectFor(selectable);
+    return renderObject == null
+        ? null
+        : SourceMarkdownRegistry.instance.findAttachment(renderObject);
+  }
+
+  /// Offset in the *rendered paragraph*, not a guessed offset in Markdown.
+  /// WidgetSpan alternatives must remain between the text on either side even
+  /// when the paragraph wraps or the widget has different font/height metrics.
+  (RenderParagraph, int)? _paragraphPosition(Selectable selectable) {
+    var object = _renderObjectFor(selectable);
+    if (object is RenderParagraph) {
+      final range = selectable.getSelection();
+      if (range != null) {
+        return (object, min(range.startOffset, range.endOffset));
+      }
+    }
+    while (object != null) {
+      final parent = object.parent;
+      final data = object.parentData;
+      if (parent is RenderParagraph && data is TextParentData) {
+        var offset = 0;
+        int? found;
+        parent.text.visitChildren((span) {
+          if (identical(span, data.span)) {
+            found = offset;
+            return false;
+          }
+          if (span is TextSpan) offset += span.text?.length ?? 0;
+          if (span is PlaceholderSpan) offset++;
+          return true;
+        });
+        if (found != null) return (parent, found!);
+      }
+      object = parent;
+    }
+    return null;
   }
 
   /// Copies the selected contents of all [Selectable]s.
@@ -3170,115 +3149,62 @@ abstract class MultiSelectableSelectionContainerDelegate
       return null;
     }
 
+    // A paragraph is one ordering unit, including selectable WidgetSpans.
+    // Sorting its fragments by screen Y alone can move an equation after the
+    // text that follows it when that text wraps onto the equation's line.
+    final positions = <Selectable, (RenderParagraph, int)>{};
+    final groups = <Object, List<(Selectable, SelectedContent, Rect)>>{};
+    for (final selection in selections) {
+      final position = _paragraphPosition(selection.$1);
+      if (position != null) positions[selection.$1] = position;
+      groups.putIfAbsent(position?.$1 ?? selection.$1, () => []).add(selection);
+    }
+    final orderedGroups = groups.values.toList();
+    Rect groupRect(List<(Selectable, SelectedContent, Rect)> group) {
+      final paragraph = positions[group.first.$1]?.$1;
+      return paragraph == null
+          ? group.first.$3
+          : MatrixUtils.transformRect(paragraph.getTransformTo(null),
+              Offset.zero & paragraph.size);
+    }
     // Sort selections by position (top to bottom, then left to right)
-    selections.sort((a, b) {
+    orderedGroups.sort((a, b) {
       const yTolerance = 2.0; // Consider within 2px as same line
-      final yDiff = (a.$3.top - b.$3.top).abs();
+      final rectA = groupRect(a);
+      final rectB = groupRect(b);
+      final yDiff = (rectA.top - rectB.top).abs();
 
       if (yDiff > yTolerance) {
         // Different lines - sort by Y
-        return a.$3.top.compareTo(b.$3.top);
+        return rectA.top.compareTo(rectB.top);
       } else {
         // Same line (within tolerance) - sort by X (left to right)
-        return a.$3.left.compareTo(b.$3.left);
+        return rectA.left.compareTo(rectB.left);
       }
     });
+    selections.clear();
+    for (final group in orderedGroups) {
+      group.sort((a, b) => (positions[a.$1]?.$2 ?? 0)
+          .compareTo(positions[b.$1]?.$2 ?? 0));
+      selections.addAll(group);
+    }
     debugLog(
         () => '📐 Sorted selections by position (Y then X, tolerance=2px)');
 
-    // Build SelectionFragments for the serializer.
-    // ARCHITECTURE: We used to build a string buffer here and concatenate fragments
-    // directly. This broke markdown-aware copy because we had no way to preserve
-    // list bullets, nested indentation, or table pipes. Now we build proper
-    // SelectionFragment objects with AST attachments and hand them to SelectionSerializer,
-    // which knows how to reconstruct canonical markdown.
-    //
-    // First pass: get attachment for each selection
-    final rawFragments = <(SelectedContent, Rect, MarkdownSourceAttachment?)>[];
-    for (final (selectable, data, rect) in selections) {
-      final attachment = _findAttachment(selectable);
-      copyDiagnosticLog(() => 'selection selectable=${selectable.runtimeType} '
-          'attachment=${attachment?.blockNode?.type} '
-          'textLen=${data.plainText.length} '
-          'preview="${data.plainText.substring(0, min(40, data.plainText.length)).replaceAll('\n', '\\n')}" '
-          'rect=$rect');
-      rawFragments.add((data, rect, attachment));
-    }
-
-    // Second pass: group by attachment and aggregate.
-    // For lists with multiple fragments (Flutter often splits bullets and text into
-    // separate selectables), we aggregate them here so the serializer can compute
-    // the correct selection range in the list's plain-text space.
-    final fragmentGroups =
-        <MarkdownSourceAttachment?, List<(SelectedContent, Rect)>>{};
-    for (final (data, rect, attachment) in rawFragments) {
-      fragmentGroups.putIfAbsent(attachment, () => []).add((data, rect));
-    }
-
-    // Build final fragments (one per block when possible)
-    final fragments = <SelectionFragment>[];
-    for (final entry in fragmentGroups.entries) {
-      final attachment = entry.key;
-      final group = entry.value;
-      final blockNode = attachment?.blockNode;
-
-      // Preferred path: map the group's leaf texts onto the block's
-      // plain-text projection and emit one ranged fragment for the whole
-      // block. The serializer converts ranges to markdown precisely, which
-      // preserves inline formatting even for partial selections.
-      if (blockNode != null) {
-        final ranged = _buildRangedBlockFragment(attachment!, blockNode, group);
-        if (ranged != null) {
-          fragments.add(ranged);
-          continue;
-        }
-      }
-
-      // Emit fragments individually
-      for (final (data, rect) in group) {
-        final plainText = data.plainText;
-
-        // If no attachment but table registry has a match, use that
-        if (attachment == null) {
-          final tableMarkdown =
-              TableLeafRegistry.instance.toMarkdown(plainText);
-          if (tableMarkdown != null) {
-            debugLog(() => '📦 Using TableLeafRegistry for fragment');
-            // Build synthetic fragment that serializer will recognize
-            fragments.add(SelectionFragment(
-              rect: rect,
-              plainText: tableMarkdown,
-              contentLength: plainText.length,
-              attachment: null,
-            ));
-            continue;
-          }
-        }
-
-        fragments.add(SelectionFragment(
+    // Preserve the actual selected leaves. Matching their text against an AST
+    // projection loses occurrence identity and used to add Markdown wrappers
+    // (even the wrong list number) to correctly highlighted substrings.
+    final fragments = <DisplayedTextFragment>[
+      for (final (selectable, data, rect) in selections)
+        DisplayedTextFragment(
+          text: data.plainText,
           rect: rect,
-          plainText: plainText,
-          contentLength: plainText.length,
-          attachment: attachment,
-        ));
-      }
-    }
-
-    // Use SelectionSerializer to handle all the smart copy logic
-    copyDiagnosticLog(() {
-      final withAttachment =
-          fragments.where((f) => f.attachment != null).length;
-      final types = fragments
-          .map((f) => f.attachment?.blockNode?.type.name ?? 'NULL')
-          .join(',');
-      return 'serialize: fragments=${fragments.length} '
-          'withAttachment=$withAttachment types=[$types]';
-    });
-    final serializer = SelectionSerializer();
-    final markdown = serializer.serialize(fragments);
-
-    debugLog(() => '📋 Final clipboard text length: ${markdown.length}');
-    return SelectedContent(plainText: markdown);
+          attachment: _findAttachment(selectable),
+        ),
+    ];
+    final text = const DisplayedTextSerializer().serialize(fragments);
+    debugLog(() => '📋 Final clipboard text length: ${text.length}');
+    return SelectedContent(plainText: text);
   }
 
   /// The total length of the content under this [SelectionContainerDelegate].

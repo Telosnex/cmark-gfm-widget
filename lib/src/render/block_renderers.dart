@@ -1,5 +1,4 @@
 import 'package:cmark_gfm/cmark_gfm.dart';
-import 'package:cmark_gfm_widget/src/selection/markdown_selectable_paragraph.dart';
 import 'package:cmark_gfm_widget/src/widgets/source_markdown_registry.dart';
 
 import '../parser/document_snapshot.dart';
@@ -7,33 +6,12 @@ import 'package:flutter/gestures.dart' show GestureRecognizer;
 import 'package:flutter_math_fork/flutter_math.dart';
 import 'package:pixel_snap/material.dart';
 
-import '../flutter/debug_log.dart';
-
 import '../theme/cmark_theme.dart';
 import '../highlight/highlight_adapter.dart';
 import '../widgets/source_aware_widget.dart';
-import '../selection/leaf_text_registry.dart';
-import '../selection/markdown_selectable_list.dart';
 import 'inline_renderers.dart';
 import 'math_parser_settings.dart';
 import 'render_pipeline.dart';
-
-/// Controls whether to wrap paragraphs and lists in custom [SelectionContainer]s
-/// (MarkdownSelectableParagraph, MarkdownSelectableList).
-///
-/// Default is FALSE because custom selection containers break cross-boundary drags:
-/// - Dragging from a paragraph into a list captures partial text ("Th" instead of full bullet)
-/// - Bullet markers render in separate widgets outside the SelectionContainer
-/// - Visual highlight and clipboard content mismatch
-///
-/// With this disabled, we rely on Flutter's default selection and use
-/// [SelectionSerializer] to aggregate fragments and reconstruct markdown at copy time.
-///
-/// Can be enabled via: --dart-define=CMARK_USE_MARKDOWN_SELECTABLES=true
-const bool kUseMarkdownSelectables = bool.fromEnvironment(
-  'CMARK_USE_MARKDOWN_SELECTABLES',
-  defaultValue: false,
-);
 
 final HighlightAdapter _highlightAdapter = HighlightAdapter();
 
@@ -104,7 +82,7 @@ List<BlockRenderResult> renderDocumentBlocks(
           )
         : context;
     
-    var widget = _renderBlock(block, blockContext);
+    final widget = _renderBlock(block, blockContext);
     if (widget == null) continue;
     
     // Clear leading spans after first block - they only apply to the first block
@@ -115,39 +93,6 @@ List<BlockRenderResult> renderDocumentBlocks(
     final metadata = DocumentSnapshot.metadataFor(block);
     final id = metadata?.id ?? 'block-${results.length}';
 
-    // Wrap with source metadata so the serializer knows the block type.
-    if (context.selectable) {
-      final attachment = MarkdownSourceAttachment(
-        blockNode: block,
-      );
-      debugLog(() =>
-          '🔧 Creating SourceAwareWidget for ${block.type} block=$id');
-      widget = SourceAwareWidget(
-        attachment: attachment,
-        child: widget,
-      );
-
-      // Optionally wrap with custom selectables for paragraphs/lists.
-      if (kUseMarkdownSelectables) {
-        switch (block.type) {
-          case CmarkNodeType.paragraph:
-            widget = MarkdownSelectableParagraph(
-              attachment: attachment,
-              child: widget,
-            );
-            break;
-          case CmarkNodeType.list:
-            widget = MarkdownSelectableList(
-              attachment: attachment,
-              child: widget,
-            );
-            break;
-          default:
-            break;
-        }
-      }
-    }
-
     results.add(BlockRenderResult(
         id: id, widget: widget));
   }
@@ -155,6 +100,21 @@ List<BlockRenderResult> renderDocumentBlocks(
 }
 
 Widget? _renderBlock(
+  CmarkNode node,
+  BlockRenderContext context, {
+  int listLevel = 0,
+}) {
+  final child = _renderBlockContent(node, context, listLevel: listLevel);
+  if (child == null || !context.selectable) return child;
+  // Nested list/quote paragraphs need their own identity too. A top-level
+  // list attachment cannot distinguish inline continuations from new items.
+  return SourceAwareWidget(
+    attachment: MarkdownSourceAttachment(blockNode: node),
+    child: child,
+  );
+}
+
+Widget? _renderBlockContent(
   CmarkNode node,
   BlockRenderContext context, {
   int listLevel = 0,
@@ -179,38 +139,7 @@ Widget? _renderBlock(
     case CmarkNodeType.codeBlock:
       return _buildCodeBlock(node, context);
     case CmarkNodeType.thematicBreak:
-      if (context.selectable) {
-        // Use a Text widget that looks like a divider and copies as ===
-        return _wrapWithSpacing(
-          Padding(
-            padding: EdgeInsets.symmetric(
-              vertical: theme.thematicBreakVerticalPadding / 2,
-            ),
-            child: Container(
-              height: theme.thematicBreakThickness,
-              color: theme.thematicBreakColor,
-              alignment: Alignment.centerLeft,
-              child: const Text.rich(
-                TextSpan(
-                  children: [
-                    TextSpan(
-                      text: '\r---\r',
-                      style: TextStyle(color: Colors.transparent, fontSize: 0),
-                    ),
-                    TextSpan(
-                      text: '\r',
-                      style: TextStyle(fontSize: 0),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          theme.blockSpacing,
-        );
-      }
-
-      // Non-selectable: use regular Divider
+      // A rule is a visual boundary, not hidden Markdown text to copy.
       final verticalPadding =
           (theme.thematicBreakVerticalPadding / 2).clamp(0.0, double.infinity);
       final divider = Divider(
@@ -400,11 +329,13 @@ Widget _buildCodeBlock(CmarkNode node, BlockRenderContext context) {
         ? Text.rich(line, softWrap: false, textScaler: textScaler)
         : RichText(text: line, softWrap: false, textScaler: textScaler);
     if (context.selectable) {
-      // Each line gets its own attachment instance (same block node) so the
-      // selection serializer treats lines as distinct fragments and joins
-      // them with newlines instead of deduplicating them.
+      // Empty lines have no selectable text. The line index preserves those
+      // boundaries between selected lines without consulting source text.
       lineWidget = SourceAwareWidget(
-        attachment: MarkdownSourceAttachment(blockNode: node),
+        attachment: MarkdownSourceAttachment(
+          blockNode: node,
+          codeLine: lineWidgets.length,
+        ),
         child: lineWidget,
       );
     }
@@ -521,6 +452,23 @@ Widget _buildListItem(
 
   final resolvedLevel = level < 1 ? 1 : level;
 
+  Widget marker = Text(
+    bulletText,
+    style: ordered
+        ? context.theme.orderedListBulletTextStyle
+        : context.theme.unorderedListBulletTextStyle,
+    textAlign: TextAlign.right,
+  );
+  if (context.selectable) {
+    marker = SourceAwareWidget(
+      attachment: MarkdownSourceAttachment(
+        blockNode: item,
+        isListMarker: true,
+      ),
+      child: marker,
+    );
+  }
+
   final rowChildren = <Widget>[
     if (leadingSpansBeforeMarker.isNotEmpty)
       Text.rich(
@@ -534,13 +482,7 @@ Widget _buildListItem(
         ),
         textScaler: TextScaler.linear(context.textScaleFactor),
       ),
-    Text(
-      bulletText,
-      style: ordered
-          ? context.theme.orderedListBulletTextStyle
-          : context.theme.unorderedListBulletTextStyle,
-      textAlign: TextAlign.right,
-    ),
+    marker,
     SizedBox(width: context.theme.listBulletGap),
   ];
 
@@ -576,7 +518,6 @@ BlockRenderContext _withoutLeadingSpans(BlockRenderContext context) {
 }
 
 Widget _buildTable(CmarkNode node, BlockRenderContext context) {
-  TableLeafRegistry.instance.beginTable(node);
   final cellRows = <List<Widget>>[];
   final columnAlignments = <CmarkTableAlign>[];
   final dataRows = <List<String>>[];
@@ -618,7 +559,6 @@ Widget _buildTable(CmarkNode node, BlockRenderContext context) {
         continue;
       }
     }
-    TableLeafRegistry.instance.beginRow(rowNode);
     final cells = <Widget>[];
     final cellTexts = <String>[];
     var cellNode = rowNode.firstChild;
@@ -656,7 +596,6 @@ Widget _buildTable(CmarkNode node, BlockRenderContext context) {
       );
 
       final textAlign = _textAlignForCell(columnAlignments[columnIndex]);
-      final plainText = textSpan.toPlainText();
       // Keep code-only cells on the table's prose line box. Without a forced
       // strut, the smaller monospace run defines a shorter paragraph whose
       // top is aligned with neighboring cells, so it appears too high.
@@ -694,8 +633,6 @@ Widget _buildTable(CmarkNode node, BlockRenderContext context) {
         );
       }
 
-      TableLeafRegistry.instance.addCell(cellNode, plainText);
-
       cells.add(
         Align(
           alignment: _alignmentForCell(columnAlignments[columnIndex]),
@@ -711,7 +648,6 @@ Widget _buildTable(CmarkNode node, BlockRenderContext context) {
     }
     maxColumns = cells.length > maxColumns ? cells.length : maxColumns;
     cellRows.add(cells);
-    TableLeafRegistry.instance.endRow();
     if (rowNode.tableRowData.isHeader) {
       isHeaderProcessed = true;
       headerRow = cellTexts;
@@ -722,7 +658,6 @@ Widget _buildTable(CmarkNode node, BlockRenderContext context) {
   }
 
   if (cellRows.isEmpty) {
-    TableLeafRegistry.instance.endTable();
     return const SizedBox.shrink();
   }
 
@@ -770,9 +705,7 @@ Widget _buildTable(CmarkNode node, BlockRenderContext context) {
     );
     result = wrapper(result, metadata, wrapperContext);
   }
-  final wrapped = _wrapWithSpacing(result, context.theme.blockSpacing);
-  TableLeafRegistry.instance.endTable();
-  return wrapped;
+  return _wrapWithSpacing(result, context.theme.blockSpacing);
 }
 
 Widget _buildFootnoteDefinition(

@@ -73,7 +73,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(
         await selectAllAndCopy(tester),
-        '- Apple\n- Banana\n- Cherry',
+        '• Apple\n• Banana\n• Cherry',
       );
     });
 
@@ -84,7 +84,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(
         await selectAllAndCopy(tester),
-        '- Parent\n  - Child A\n  - Child B\n- Another parent',
+        '• Parent\n  • Child A\n  • Child B\n• Another parent',
       );
     });
 
@@ -103,36 +103,37 @@ void main() {
 
     // === Inline formatting ===
 
-    testWidgets('bold and italic preserve markdown', (tester) async {
+    testWidgets('bold and italic copy displayed text', (tester) async {
       await tester.pumpWidget(buildTestWidget(
         'This has **bold** and *italic* text.',
       ));
       await tester.pumpAndSettle();
       expect(
         await selectAllAndCopy(tester),
-        'This has **bold** and *italic* text.',
+        'This has bold and italic text.',
       );
     });
 
-    testWidgets('inline code preserves markdown', (tester) async {
+    testWidgets('inline code copies without added backticks', (tester) async {
       await tester.pumpWidget(buildTestWidget(
         'Use the `printf()` function.',
       ));
       await tester.pumpAndSettle();
       expect(
         await selectAllAndCopy(tester),
-        'Use the `printf()` function.',
+        'Use the printf() function.',
       );
     });
 
-    testWidgets('links preserve markdown', (tester) async {
+    testWidgets('links copy labels without appended destinations',
+        (tester) async {
       await tester.pumpWidget(buildTestWidget(
         'Visit [Google](https://google.com) today.',
       ));
       await tester.pumpAndSettle();
       expect(
         await selectAllAndCopy(tester),
-        'Visit [Google](https://google.com) today.',
+        'Visit Google today.',
       );
     });
 
@@ -162,14 +163,14 @@ void main() {
 
     // === Headings ===
 
-    testWidgets('headings preserve markdown', (tester) async {
+    testWidgets('headings copy without added hashes', (tester) async {
       await tester.pumpWidget(buildTestWidget(
         '# Title\n\nParagraph.\n\n## Subtitle\n\nMore text.',
       ));
       await tester.pumpAndSettle();
       expect(
         await selectAllAndCopy(tester),
-        '# Title\n\nParagraph.\n\n## Subtitle\n\nMore text.',
+        'Title\n\nParagraph.\n\nSubtitle\n\nMore text.',
       );
     });
 
@@ -182,7 +183,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(
         await selectAllAndCopy(tester),
-        'Above.\n\n---\n\nBelow.',
+        'Above.\n\nBelow.',
       );
     });
 
@@ -197,21 +198,17 @@ void main() {
       await tester.pumpAndSettle();
       expect(
         await selectAllAndCopy(tester),
-        '## Header A\n'
+        'Header A\n'
         '\n'
-        '1. **Item one**\n'
+        '1. Item one\n'
         'Sub text.\n'
         '\n'
-        '---\n'
+        'Header B\n'
         '\n'
-        '## Header B\n'
+        '1. Item two\nMore text.\n'
+        '2. Item three\nEven more.\n'
         '\n'
-        '1. **Item two**\nMore text.\n'
-        '2. **Item three**\nEven more.\n'
-        '\n'
-        '---\n'
-        '\n'
-        '*Footer*',
+        'Footer',
       );
     });
 
@@ -245,27 +242,23 @@ void main() {
 
     testWidgets('non-sequential ordered list numbers', (tester) async {
       await tester.pumpWidget(buildTestWidget(
-        // CommonMark: only the first number of an ordered list is significant;
-        // canonical serialization renumbers sequentially from it.
-        '1. In n Out\n2. El Pollo Loco\n3. Pupuseria\n4. Dominican place\n5. Vons',
+        '1. In n Out\n3. El Pollo Loco\n5. Pupuseria\n8. Dominican place\n10. Vons',
       ));
       await tester.pumpAndSettle();
       expect(
         await selectAllAndCopy(tester),
-        // CommonMark: only the first number of an ordered list is significant;
-        // canonical serialization renumbers sequentially from it.
-        '1. In n Out\n2. El Pollo Loco\n3. Pupuseria\n4. Dominican place\n5. Vons',
+        '1. In n Out\n3. El Pollo Loco\n5. Pupuseria\n8. Dominican place\n10. Vons',
       );
     });
 
-    testWidgets('strikethrough preserves markdown', (tester) async {
+    testWidgets('strikethrough copies displayed text', (tester) async {
       await tester.pumpWidget(buildTestWidget(
         'This is ~~deleted~~ text.',
       ));
       await tester.pumpAndSettle();
       expect(
         await selectAllAndCopy(tester),
-        'This is ~~deleted~~ text.',
+        'This is deleted text.',
       );
     });
 
@@ -298,7 +291,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(
         await selectAllAndCopy(tester),
-        '- Level 1\n  - Level 2\n    - Level 3',
+        '• Level 1\n  • Level 2\n    • Level 3',
       );
     });
   });

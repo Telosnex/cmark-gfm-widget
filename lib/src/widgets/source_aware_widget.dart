@@ -3,10 +3,8 @@ import 'package:flutter/widgets.dart';
 
 import 'source_markdown_registry.dart';
 
-/// Wraps a widget with its original markdown source for intelligent copy/paste.
-///
-/// When this widget is selected and copied, the patched SelectionArea will
-/// extract the markdown source instead of the rendered text.
+/// Attaches structural identity to rendered content. Ordinary selection-copy
+/// uses it for boundaries while retaining the actual selected leaf text.
 class SourceAwareWidget extends SingleChildRenderObjectWidget {
   const SourceAwareWidget({
     super.key,

@@ -74,6 +74,7 @@ class _CmarkMarkdownColumnState extends State<CmarkMarkdownColumn> {
   DocumentSnapshot? _snapshot;
   String? _lastData;
   final RenderPipeline _pipeline = const RenderPipeline();
+  final BlockRenderCache _renderCache = BlockRenderCache();
 
   @override
   void initState() {
@@ -164,7 +165,12 @@ class _CmarkMarkdownColumnState extends State<CmarkMarkdownColumn> {
       renderImages: widget.renderImages,
     );
 
-    final children = _pipeline.buildWidgets(snapshot, theme, options);
+    final children = _pipeline.buildWidgets(
+      snapshot,
+      theme,
+      options,
+      cache: _renderCache,
+    );
 
     final column = Column(
       crossAxisAlignment: CrossAxisAlignment.start,

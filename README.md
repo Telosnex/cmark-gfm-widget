@@ -53,6 +53,29 @@ CmarkMarkdownColumn(
 );
 ```
 
+## Streaming
+
+While a document streams, only its last blocks change. Give
+`RenderPipeline.render` a `BlockRenderCache`, and blocks that did not change
+keep their widget instances, so Flutter does not build or lay them out again.
+Set `RenderOptions.repaintBoundaries` so that they are not painted again either.
+
+```dart
+final cache = BlockRenderCache(); // One per document, kept across updates.
+
+final blocks = const RenderPipeline().render(
+  snapshot,
+  theme,
+  const RenderOptions(repaintBoundaries: true),
+  cache: cache,
+);
+```
+
+The cache compares each block's node with `CmarkNode.contentEquals`. Builders
+in `RenderOptions` are not called for a block that keeps its widget, so their
+output must depend only on the node and on the `cacheKey` argument.
+`CmarkMarkdownColumn` uses a cache.
+
 ## Selection and copying
 
 Ordinary Copy (and selection-change callbacks) returns selected displayed text,

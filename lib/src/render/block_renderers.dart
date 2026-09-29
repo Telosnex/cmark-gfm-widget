@@ -9,6 +9,7 @@ import 'package:pixel_snap/material.dart';
 import '../theme/cmark_theme.dart';
 import '../highlight/highlight_adapter.dart';
 import '../widgets/source_aware_widget.dart';
+import 'block_render_cache.dart';
 import 'inline_renderers.dart';
 import 'math_parser_settings.dart';
 import 'render_pipeline.dart';
@@ -60,43 +61,38 @@ class BlockRenderContext {
 List<BlockRenderResult> renderDocumentBlocks(
   DocumentSnapshot snapshot,
   List<InlineSpan> leadingSpans,
-  BlockRenderContext context,
-) {
-  final results = <BlockRenderResult>[];
-  var remainingLeadingSpans = leadingSpans;
-  
-  for (final block in snapshot.blocks) {
-    // Pass leading spans to first text block, then clear
-    final blockContext = remainingLeadingSpans.isNotEmpty
-        ? BlockRenderContext(
-            theme: context.theme,
-            inlineContext: context.inlineContext,
-            selectable: context.selectable,
-            textScaleFactor: context.textScaleFactor,
-            renderFootnoteDefinitions: context.renderFootnoteDefinitions,
-            leadingSpans: remainingLeadingSpans,
-            tableOptions: context.tableOptions,
-            codeBlockWrapper: context.codeBlockWrapper,
-            mathBlockBuilder: context.mathBlockBuilder,
-            onLinkTap: context.onLinkTap,
-          )
-        : context;
-    
-    final widget = _renderBlock(block, blockContext);
-    if (widget == null) continue;
-    
-    // Clear leading spans after first block - they only apply to the first block
-    if (remainingLeadingSpans.isNotEmpty) {
-      remainingLeadingSpans = const [];
-    }
-
-    final metadata = DocumentSnapshot.metadataFor(block);
-    final id = metadata?.id ?? 'block-${results.length}';
-
-    results.add(BlockRenderResult(
-        id: id, widget: widget));
-  }
-  return results;
+  BlockRenderContext context, {
+  BlockRenderCache? cache,
+  Object? cacheKey,
+  bool repaintBoundaries = false,
+}) {
+  return renderTopLevelBlocks(
+    snapshot,
+    leadingSpans,
+    theme: context.theme,
+    cache: cache,
+    cacheKey: cacheKey,
+    renderBlock: (block, leadingSpans) {
+      // Pass leading spans to the first text block.
+      final blockContext = leadingSpans.isNotEmpty
+          ? BlockRenderContext(
+              theme: context.theme,
+              inlineContext: context.inlineContext,
+              selectable: context.selectable,
+              textScaleFactor: context.textScaleFactor,
+              renderFootnoteDefinitions: context.renderFootnoteDefinitions,
+              leadingSpans: leadingSpans,
+              tableOptions: context.tableOptions,
+              codeBlockWrapper: context.codeBlockWrapper,
+              mathBlockBuilder: context.mathBlockBuilder,
+              onLinkTap: context.onLinkTap,
+            )
+          : context;
+      final widget = _renderBlock(block, blockContext);
+      if (widget == null || !repaintBoundaries) return widget;
+      return RepaintBoundary(child: widget);
+    },
+  );
 }
 
 Widget? _renderBlock(

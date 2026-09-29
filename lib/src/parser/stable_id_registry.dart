@@ -137,7 +137,7 @@ class StableIdRegistry {
       case CmarkNodeType.text:
       case CmarkNodeType.htmlBlock:
       case CmarkNodeType.htmlInline:
-        literal = node.content.toString();
+        literal = node.contentString;
         break;
       case CmarkNodeType.code:
       case CmarkNodeType.codeBlock:
@@ -151,7 +151,9 @@ class StableIdRegistry {
       return 0;
     }
 
-    return _hashString(literal);
+    // String.hashCode is cached per string instance, and snapshots of a
+    // stream share the literals of unchanged blocks.
+    return literal.hashCode;
   }
 
   int _extrasHash(CmarkNode node) {
@@ -186,35 +188,5 @@ class StableIdRegistry {
     return Object.hashAll(builder);
   }
 
-  static int _hashString(String input) {
-    const int prime = 16777619;
-    const int offsetBasis = 2166136261;
-
-    var hash = offsetBasis;
-    for (final codeUnit in input.codeUnits) {
-      hash ^= codeUnit;
-      hash = (hash * prime) & 0xFFFFFFFF;
-    }
-    return hash;
-  }
-
-  String _nextId() {
-    final value = _counter++;
-    return _encodeBase36(value);
-  }
-
-  static const _alphabet = '0123456789abcdefghijklmnopqrstuvwxyz';
-
-  String _encodeBase36(int value) {
-    if (value == 0) return '0';
-    var current = value;
-    final buffer = StringBuffer();
-    while (current > 0) {
-      final index = current % 36;
-      buffer.write(_alphabet[index]);
-      current = current ~/ 36;
-    }
-    final result = buffer.toString();
-    return String.fromCharCodes(result.codeUnits.reversed.toList());
-  }
+  String _nextId() => (_counter++).toRadixString(36);
 }

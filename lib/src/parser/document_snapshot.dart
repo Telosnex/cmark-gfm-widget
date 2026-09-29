@@ -25,32 +25,26 @@ class DocumentSnapshot {
   }
 
   /// Creates a snapshot from [root], assigning stable ids via [registry].
+  ///
+  /// Only the root and its top-level blocks get ids: the renderer keys
+  /// blocks by them and nothing reads ids of nested nodes. Giving every node
+  /// an id cost a hash and a map entry per node for each streamed snapshot.
   static DocumentSnapshot fromRoot({
     required CmarkNode root,
     required StableIdRegistry registry,
     required int revision,
   }) {
-    _assignMetadata(root, registry, revision);
+    root.userData = NodeMetadata(registry.idFor(root, revision));
+    var block = root.firstChild;
+    while (block != null) {
+      block.userData = NodeMetadata(registry.idFor(block, revision));
+      block = block.next;
+    }
     registry.prune(revision - 1);
     return DocumentSnapshot._(
       root: root,
       revision: revision,
     );
-  }
-
-  static void _assignMetadata(
-    CmarkNode node,
-    StableIdRegistry registry,
-    int revision,
-  ) {
-    final id = registry.idFor(node, revision);
-    node.userData = NodeMetadata(id);
-
-    var child = node.firstChild;
-    while (child != null) {
-      _assignMetadata(child, registry, revision);
-      child = child.next;
-    }
   }
 
   /// Returns the metadata attached to [node], if present.

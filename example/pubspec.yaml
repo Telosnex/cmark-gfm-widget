@@ -4,14 +4,16 @@ publish_to: 'none'
 
 environment:
   sdk: '>=3.3.0 <4.0.0'
-  flutter: ">=3.19.0"
+  flutter: ">=3.47.0"
 
 dependencies:
   flutter:
     sdk: flutter
   cmark_gfm_widget:
     path: ..
-  pixel_snap: ^0.1.5
+  pixel_snap:
+    git:
+      url: https://github.com/Telosnex/pixel_snap
 
 dev_dependencies:
   flutter_test:

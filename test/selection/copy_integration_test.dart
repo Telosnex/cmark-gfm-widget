@@ -1,5 +1,5 @@
 import 'package:cmark_gfm_widget/cmark_gfm_widget.dart';
-import 'package:flutter/material.dart' hide SelectionArea;
+import 'package:material_ui/material_ui.dart' hide SelectionArea;
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 

@@ -1,7 +1,7 @@
 import 'package:cmark_gfm_widget/cmark_gfm_widget.dart';
 import 'package:cmark_gfm_widget/src/flutter/selectable_region.dart' as region;
 import 'package:flutter/gestures.dart';
-import 'package:flutter/material.dart' hide SelectionArea;
+import 'package:material_ui/material_ui.dart' hide SelectionArea;
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';

@@ -1,7 +1,7 @@
 import 'package:cmark_gfm_widget/cmark_gfm_widget.dart' as cmark_widget;
 import 'package:cmark_gfm_widget/cmark_gfm_widget.dart';
 import 'package:flutter/gestures.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/rendering.dart' show SelectedContent;
 import 'package:flutter_test/flutter_test.dart';
 // The package renders text using pixel_snap's vendored Text/RichText, not

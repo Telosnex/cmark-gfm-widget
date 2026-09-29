@@ -6,7 +6,7 @@ homepage: https://example.com
 
 environment:
   sdk: '>=3.3.0 <4.0.0'
-  flutter: ">=3.19.0"
+  flutter: ">=3.47.0"
 
 dependencies:
   flutter:
@@ -24,14 +24,19 @@ dependencies:
       url: https://github.com/Telosnex/highlight.dart.git
       path: highlight
       ref: telosnex/limited-languages
-  pixel_snap: ^0.1.5
-    # Forked because the original package was abandoned some years ago.
+  # The fork re-exports the standalone Material/Cupertino packages.
+  pixel_snap:
+    git:
+      url: https://github.com/Telosnex/pixel_snap
+  # Forked because the original package was abandoned some years ago.
   flutter_math_fork:
     git:
       url: https://github.com/Telosnex/flutter_math_fork_fork.git
       ref: master
   vector_math: ^2.2.0
 
+  cupertino_ui: ^1.1.1
+  material_ui: ^1.4.0
 dev_dependencies:
   flutter_test:
     sdk: flutter

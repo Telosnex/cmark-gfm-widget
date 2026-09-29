@@ -65,6 +65,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.19.1"
+  cupertino_ui:
+    dependency: transitive
+    description:
+      name: cupertino_ui
+      sha256: c23816577a1280cff409e989541767887011f8f1d8c1863a794ed308af46f2a9
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.1.1"
   fake_async:
     dependency: transitive
     description:
@@ -78,12 +86,17 @@ packages:
     description: flutter
     source: sdk
     version: "0.0.0"
+  flutter_localizations:
+    dependency: transitive
+    description: flutter
+    source: sdk
+    version: "0.0.0"
   flutter_math_fork:
     dependency: transitive
     description:
       path: "."
       ref: master
-      resolved-ref: cd7cd68125f88aa4c5139a9be3c01258f2230927
+      resolved-ref: bbdf89ebd2c0b2ddd9f2dc7ec0f9d4f0eede8d89
       url: "https://github.com/Telosnex/flutter_math_fork_fork.git"
     source: git
     version: "0.7.2"
@@ -125,6 +138,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "4.1.2"
+  intl:
+    dependency: transitive
+    description:
+      name: intl
+      sha256: "1ca20c894b1717686a2319b8548763d812bc0aabdac580420a44c5178c57a867"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.20.3"
   leak_tracker:
     dependency: transitive
     description:
@@ -165,6 +186,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.13.0"
+  material_ui:
+    dependency: transitive
+    description:
+      name: material_ui
+      sha256: "32d98f11cf5942a095a8c3e01b03e4de3b17941437713dcf36b1088fb62e23d2"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.5.0"
   meta:
     dependency: transitive
     description:
@@ -208,10 +237,11 @@ packages:
   pixel_snap:
     dependency: "direct main"
     description:
-      name: pixel_snap
-      sha256: "677410ea37b07cd37ecb6d5e6c0d8d7615a7cf3bd92ba406fd1ac57e937d1fb0"
-      url: "https://pub.dev"
-    source: hosted
+      path: "."
+      ref: HEAD
+      resolved-ref: "9fb9fccb81bce1b3140f30fa734b9ab1881f1220"
+      url: "https://github.com/Telosnex/pixel_snap"
+    source: git
     version: "0.1.5"
   provider:
     dependency: transitive
@@ -347,5 +377,5 @@ packages:
     source: hosted
     version: "6.6.1"
 sdks:
-  dart: ">=3.11.0-0 <4.0.0"
-  flutter: ">=3.32.0"
+  dart: ">=3.13.0 <4.0.0"
+  flutter: ">=3.47.0"

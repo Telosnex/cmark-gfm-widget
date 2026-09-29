@@ -1,6 +1,6 @@
 import 'package:cmark_gfm/cmark_gfm.dart';
 import 'package:cmark_gfm_widget/cmark_gfm_widget.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'test_helpers.dart';

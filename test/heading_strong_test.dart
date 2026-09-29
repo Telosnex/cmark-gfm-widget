@@ -1,7 +1,7 @@
 import 'package:cmark_gfm/cmark_gfm.dart';
 import 'package:cmark_gfm_widget/src/render/inline_renderers.dart';
 import 'package:cmark_gfm_widget/src/theme/cmark_theme.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

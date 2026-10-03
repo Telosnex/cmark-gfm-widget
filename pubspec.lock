@@ -153,7 +153,7 @@ packages:
     description:
       path: "."
       ref: master
-      resolved-ref: bbdf89ebd2c0b2ddd9f2dc7ec0f9d4f0eede8d89
+      resolved-ref: "297dbb9169ccfd82ce891a6e2415a46f2eeedc10"
       url: "https://github.com/Telosnex/flutter_math_fork_fork.git"
     source: git
     version: "0.7.2"

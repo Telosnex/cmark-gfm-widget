@@ -54,6 +54,7 @@ class CmarkThemeData {
     required this.codeSpanTextStyle,
     // Chosen on 25-11-16 based on IM Fell and Jet Brains Mono.
     this.inlineCodeFontScale = 0.85,
+    this.inlineCodeFontSize,
     required this.linkTextStyle,
     required this.emphasisTextStyle,
     required this.strongTextStyle,
@@ -86,11 +87,25 @@ class CmarkThemeData {
   final TextStyle paragraphTextStyle;
   final List<TextStyle> _headingTextStyles;
   final TextStyle codeSpanTextStyle;
+
   /// Multiplier applied to the surrounding font size for inline code spans.
   ///
   /// Values < 1.0 make code appear slightly smaller than the surrounding text,
   /// which often compensates for monospace glyphs appearing visually larger.
   final double inlineCodeFontScale;
+
+  /// Resolves the inline code font size from the style of the text the code
+  /// sits in: paragraph, heading, table cell, link, emphasis, etc.
+  ///
+  /// Use this when one ratio can't fit every context, e.g. matching
+  /// monospace optically to headings and body text set in different fonts.
+  /// `surrounding.fontFamily` and `surrounding.fontSize` describe that
+  /// context.
+  ///
+  /// Precedence: an explicit `codeSpanTextStyle.fontSize` wins, then this,
+  /// then [inlineCodeFontScale]. Returning null falls through to
+  /// [inlineCodeFontScale].
+  final double? Function(TextStyle surrounding)? inlineCodeFontSize;
   final TextStyle linkTextStyle;
   final TextStyle emphasisTextStyle;
   final TextStyle strongTextStyle;
@@ -137,6 +152,7 @@ class CmarkThemeData {
     List<TextStyle>? headingTextStyles,
     TextStyle? codeSpanTextStyle,
     double? inlineCodeFontScale,
+    double? Function(TextStyle surrounding)? inlineCodeFontSize,
     TextStyle? linkTextStyle,
     TextStyle? emphasisTextStyle,
     TextStyle? strongTextStyle,
@@ -171,6 +187,7 @@ class CmarkThemeData {
           headingTextStyles ?? List<TextStyle>.from(_headingTextStyles),
       codeSpanTextStyle: codeSpanTextStyle ?? this.codeSpanTextStyle,
       inlineCodeFontScale: inlineCodeFontScale ?? this.inlineCodeFontScale,
+      inlineCodeFontSize: inlineCodeFontSize ?? this.inlineCodeFontSize,
       linkTextStyle: linkTextStyle ?? this.linkTextStyle,
       emphasisTextStyle: emphasisTextStyle ?? this.emphasisTextStyle,
       strongTextStyle: strongTextStyle ?? this.strongTextStyle,

@@ -105,11 +105,12 @@ InlineSpan _renderInlineNode(
     case CmarkNodeType.code:
       final theme = context.theme;
       final merged = baseStyle.merge(theme.codeSpanTextStyle);
-      // If the theme provides an explicit inline-code size, respect it. When
-      // it does not, preserve the surrounding typography size and apply the
-      // legacy scale factor for backwards compatibility.
+      // Precedence: explicit codeSpanTextStyle size, then the theme's
+      // resolver (given the surrounding style, so headings/cells can differ),
+      // then the surrounding size times the legacy scale factor.
       final explicitCodeFontSize = theme.codeSpanTextStyle.fontSize;
-      double? resolvedFontSize = explicitCodeFontSize;
+      double? resolvedFontSize =
+          explicitCodeFontSize ?? theme.inlineCodeFontSize?.call(baseStyle);
       if (resolvedFontSize == null) {
         resolvedFontSize = baseStyle.fontSize ?? merged.fontSize;
         if (resolvedFontSize != null) {

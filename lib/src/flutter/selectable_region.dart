@@ -1874,13 +1874,23 @@ class SelectableRegionState extends State<SelectableRegion>
   }
 
   /// The line height at the start of the current selection.
+  ///
+  /// A selection point is null when the selectable that holds its edge is
+  /// gone, e.g. a lazy list disposed it after it scrolled out of the cache
+  /// extent. The other edge can still be in view, so the context menu stays
+  /// open and rebuilds. Fall back to the other edge, as [selectionEndpoints]
+  /// and [_createSelectionOverlay] do.
   double get startGlyphHeight {
-    return _selectionDelegate.value.startSelectionPoint!.lineHeight;
+    final SelectionGeometry value = _selectionDelegate.value;
+    return (value.startSelectionPoint ?? value.endSelectionPoint!).lineHeight;
   }
 
   /// The line height at the end of the current selection.
+  ///
+  /// Falls back to the start edge; see [startGlyphHeight].
   double get endGlyphHeight {
-    return _selectionDelegate.value.endSelectionPoint!.lineHeight;
+    final SelectionGeometry value = _selectionDelegate.value;
+    return (value.endSelectionPoint ?? value.startSelectionPoint!).lineHeight;
   }
 
   /// Returns the local coordinates of the endpoints of the current selection.

@@ -11,7 +11,8 @@ class LineBreakAwareSelectionDelegate extends StaticSelectionContainerDelegate {
   SelectedContent? getSelectedContent() {
     final List<SelectedContent> selections = <SelectedContent>[
       for (final Selectable selectable in selectables)
-        if (selectable.getSelectedContent() case final SelectedContent data) data,
+        if (selectable.getSelectedContent() case final SelectedContent data)
+          data,
     ];
     if (selections.isEmpty) {
       return null;

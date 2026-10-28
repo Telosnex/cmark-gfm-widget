@@ -25,9 +25,9 @@ class CmarkMarkdownColumn extends StatefulWidget {
     this.leadingSpans = const [],
     this.renderImages = false,
   }) : assert(
-         (data != null) ^ (snapshot != null),
-         'Provide either data or snapshot.',
-       );
+          (data != null) ^ (snapshot != null),
+          'Provide either data or snapshot.',
+        );
 
   /// Raw Markdown input.
   final String? data;
@@ -52,7 +52,7 @@ class CmarkMarkdownColumn extends StatefulWidget {
 
   /// Parser configuration used when creating an internal [ParserController].
   final CmarkParserOptions parserOptions;
-  
+
   /// Callback when selection changes (only used when selectable=true).
   final void Function(SelectedContent?)? onSelectionChanged;
 
@@ -104,8 +104,7 @@ class _CmarkMarkdownColumnState extends State<CmarkMarkdownColumn> {
       }
     }
 
-    if (_ownsController &&
-        widget.parserOptions != oldWidget.parserOptions) {
+    if (_ownsController && widget.parserOptions != oldWidget.parserOptions) {
       _controller = ParserController(parserOptions: widget.parserOptions);
       controllerChanged = true;
     }
@@ -150,13 +149,10 @@ class _CmarkMarkdownColumnState extends State<CmarkMarkdownColumn> {
     }
 
     final inheritedTheme = CmarkTheme.maybeOf(context);
-    final theme =
-        widget.theme ??
+    final theme = widget.theme ??
         inheritedTheme ??
         CmarkThemeData.fallback(Theme.of(context).textTheme);
-    final textScale =
-        widget.textScaleFactor ??
-        1.0;
+    final textScale = widget.textScaleFactor ?? 1.0;
 
     final options = RenderOptions(
       selectable: widget.selectable,
@@ -176,9 +172,9 @@ class _CmarkMarkdownColumnState extends State<CmarkMarkdownColumn> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: children,
     );
-    
+
     // Use SelectionArea to enable cross-block selection
-    final content = widget.selectable 
+    final content = widget.selectable
         ? SelectionArea(
             onSelectionChanged: widget.onSelectionChanged,
             child: column,

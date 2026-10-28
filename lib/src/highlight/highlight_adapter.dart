@@ -75,9 +75,8 @@ class HighlightAdapter {
       return cached;
     }
 
-    final effectiveBase = theme['root'] != null
-        ? baseStyle.merge(theme['root'])
-        : baseStyle;
+    final effectiveBase =
+        theme['root'] != null ? baseStyle.merge(theme['root']) : baseStyle;
     final styles = _SpanStyles(
       base: effectiveBase,
       theme: theme,
@@ -130,7 +129,8 @@ class HighlightAdapter {
     // `trimmed` never ends with '\n' (trimRight), so the tail line is always
     // non-empty and `completed` always ends at a line boundary.
     final lastNewline = trimmed.lastIndexOf('\n');
-    final completed = lastNewline == -1 ? '' : trimmed.substring(0, lastNewline + 1);
+    final completed =
+        lastNewline == -1 ? '' : trimmed.substring(0, lastNewline + 1);
     final tail = trimmed.substring(lastNewline + 1);
 
     var state = _findState(configHash, trimmed);
@@ -412,7 +412,8 @@ class HighlightAdapter {
       if (identical(run.style, pendingStyle) || run.style == pendingStyle) {
         pendingText.write(run.text);
       } else {
-        children.add(TextSpan(text: pendingText.toString(), style: pendingStyle));
+        children
+            .add(TextSpan(text: pendingText.toString(), style: pendingStyle));
         pendingText = StringBuffer(run.text);
         pendingStyle = run.style;
       }
@@ -507,15 +508,15 @@ class _CacheKey {
 
   @override
   int get hashCode => Object.hash(
-    codeHash,
-    trailingHash,
-    language,
-    autoDetect,
-    themeHash,
-    baseStyleHash,
-    fallbackHash,
-    tabSize,
-  );
+        codeHash,
+        trailingHash,
+        language,
+        autoDetect,
+        themeHash,
+        baseStyleHash,
+        fallbackHash,
+        tabSize,
+      );
 
   @override
   bool operator ==(Object other) {

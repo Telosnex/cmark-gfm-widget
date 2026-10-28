@@ -17,8 +17,7 @@ import 'render_pipeline.dart';
 final HighlightAdapter _highlightAdapter = HighlightAdapter();
 
 class BlockRenderResult {
-  BlockRenderResult(
-      {required this.id, required this.widget});
+  BlockRenderResult({required this.id, required this.widget});
 
   final String id;
   final Widget widget;
@@ -51,9 +50,10 @@ class BlockRenderContext {
   final TableRenderOptions tableOptions;
   final CodeBlockWrapperBuilder? codeBlockWrapper;
   final BlockMathWidgetBuilder? mathBlockBuilder;
+
   /// Optional tap handler for links (Markdown links).
   final LinkTapHandler? onLinkTap;
-  
+
   /// Optional leading spans to prepend to the first text block.
   final List<InlineSpan> leadingSpans;
 }
@@ -122,7 +122,8 @@ Widget? _renderBlockContent(
   final theme = context.theme;
   switch (node.type) {
     case CmarkNodeType.paragraph:
-      return _buildTextualBlock(node, context, style: theme.paragraphTextStyle, blockSpacing: effectiveBlockSpacing);
+      return _buildTextualBlock(node, context,
+          style: theme.paragraphTextStyle, blockSpacing: effectiveBlockSpacing);
     case CmarkNodeType.heading:
       return _buildTextualBlock(
         node,
@@ -396,9 +397,8 @@ Widget _buildList(
   var item = node.firstChild;
   var index = 0;
   while (item != null) {
-    final itemLeadingSpans = index == 0
-        ? context.leadingSpans
-        : const <InlineSpan>[];
+    final itemLeadingSpans =
+        index == 0 ? context.leadingSpans : const <InlineSpan>[];
     index += 1;
     // Use each item's original number (listData.start) instead of calculating
     final itemNumber = ordered ? item.listData.start : index;
@@ -535,7 +535,10 @@ Widget _buildTable(CmarkNode node, BlockRenderContext context) {
       var allEmpty = true;
       var checkCell = rowNode.firstChild;
       while (checkCell != null) {
-        if (checkCell.firstChild != null) { allEmpty = false; break; }
+        if (checkCell.firstChild != null) {
+          allEmpty = false;
+          break;
+        }
         checkCell = checkCell.next;
       }
       if (allEmpty) {

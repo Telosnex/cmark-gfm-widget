@@ -7,8 +7,9 @@ BlockRenderContext createTestBlockContext({
   CmarkThemeData? theme,
   bool selectable = true,
 }) {
-  final effectiveTheme = theme ?? CmarkThemeData.fallback(ThemeData().textTheme);
-  
+  final effectiveTheme =
+      theme ?? CmarkThemeData.fallback(ThemeData().textTheme);
+
   return BlockRenderContext(
     theme: effectiveTheme,
     inlineContext: InlineRenderContext(
@@ -24,13 +25,13 @@ BlockRenderContext createTestBlockContext({
   );
 }
 
-
 /// Helper to parse and render markdown, returning BlockRenderResults with sources
-List<BlockRenderResult> renderMarkdownBlocks(String markdown, {bool selectable = true}) {
+List<BlockRenderResult> renderMarkdownBlocks(String markdown,
+    {bool selectable = true}) {
   final controller = ParserController();
   final snapshot = controller.parse(markdown);
   final context = createTestBlockContext(selectable: selectable);
-  
+
   return renderDocumentBlocks(snapshot, const [], context);
 }
 

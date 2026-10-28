@@ -37,17 +37,17 @@ class NodeKey {
 
   @override
   int get hashCode => Object.hash(
-    typeCode,
-    startLine,
-    startColumn,
-    endLine,
-    endColumn,
-    childCount,
-    firstChildStartLine,
-    firstChildTypeCode,
-    literalHash,
-    extrasHash,
-  );
+        typeCode,
+        startLine,
+        startColumn,
+        endLine,
+        endColumn,
+        childCount,
+        firstChildStartLine,
+        firstChildTypeCode,
+        literalHash,
+        extrasHash,
+      );
 
   @override
   bool operator ==(Object other) {

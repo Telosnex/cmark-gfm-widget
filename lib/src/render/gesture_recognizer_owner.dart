@@ -29,8 +29,7 @@ class GestureRecognizerOwner extends StatefulWidget {
   final Widget child;
 
   @override
-  State<GestureRecognizerOwner> createState() =>
-      _GestureRecognizerOwnerState();
+  State<GestureRecognizerOwner> createState() => _GestureRecognizerOwnerState();
 }
 
 class _GestureRecognizerOwnerState extends State<GestureRecognizerOwner> {

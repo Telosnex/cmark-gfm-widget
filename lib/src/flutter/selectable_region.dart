@@ -3174,9 +3174,10 @@ abstract class MultiSelectableSelectionContainerDelegate
       final paragraph = positions[group.first.$1]?.$1;
       return paragraph == null
           ? group.first.$3
-          : MatrixUtils.transformRect(paragraph.getTransformTo(null),
-              Offset.zero & paragraph.size);
+          : MatrixUtils.transformRect(
+              paragraph.getTransformTo(null), Offset.zero & paragraph.size);
     }
+
     // Sort selections by position (top to bottom, then left to right)
     orderedGroups.sort((a, b) {
       const yTolerance = 2.0; // Consider within 2px as same line
@@ -3194,8 +3195,8 @@ abstract class MultiSelectableSelectionContainerDelegate
     });
     selections.clear();
     for (final group in orderedGroups) {
-      group.sort((a, b) => (positions[a.$1]?.$2 ?? 0)
-          .compareTo(positions[b.$1]?.$2 ?? 0));
+      group.sort((a, b) =>
+          (positions[a.$1]?.$2 ?? 0).compareTo(positions[b.$1]?.$2 ?? 0));
       selections.addAll(group);
     }
     debugLog(

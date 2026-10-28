@@ -3,7 +3,7 @@ import 'package:pixel_snap/material.dart';
 
 class InlineMathSelectable extends StatelessWidget {
   const InlineMathSelectable({
-    super.key, 
+    super.key,
     required this.literal,
     required this.child,
   });
@@ -22,8 +22,7 @@ class InlineMathSelectable extends StatelessWidget {
       return child;
     }
 
-    final selectionColor =
-        DefaultSelectionStyle.of(context).selectionColor ??
+    final selectionColor = DefaultSelectionStyle.of(context).selectionColor ??
         const Color(0x6633B5E5);
 
     return _InlineMathSelectableRenderObject(
@@ -74,9 +73,9 @@ class _RenderInlineMathSelectable extends RenderProxyBox
     required String literal,
     required Color selectionColor,
     required SelectionRegistrar registrar,
-  }) : _literal = literal,
-       _selectionColor = selectionColor,
-       _geometry = ValueNotifier<SelectionGeometry>(_noSelection) {
+  })  : _literal = literal,
+        _selectionColor = selectionColor,
+        _geometry = ValueNotifier<SelectionGeometry>(_noSelection) {
     this.registrar = registrar;
     _geometry.addListener(markNeedsPaint);
   }
@@ -110,7 +109,8 @@ class _RenderInlineMathSelectable extends RenderProxyBox
   void addListener(VoidCallback listener) => _geometry.addListener(listener);
 
   @override
-  void removeListener(VoidCallback listener) => _geometry.removeListener(listener);
+  void removeListener(VoidCallback listener) =>
+      _geometry.removeListener(listener);
 
   @override
   SelectionGeometry get value => _geometry.value;
@@ -202,8 +202,7 @@ class _RenderInlineMathSelectable extends RenderProxyBox
         _end = Offset.infinite;
       case SelectionEventType.granularlyExtendSelection:
         result = SelectionResult.end;
-        final extendSelectionEvent =
-            event as GranularlyExtendSelectionEvent;
+        final extendSelectionEvent = event as GranularlyExtendSelectionEvent;
         if (_start == null || _end == null) {
           if (extendSelectionEvent.forward) {
             _start = _end = Offset.zero;
@@ -211,9 +210,8 @@ class _RenderInlineMathSelectable extends RenderProxyBox
             _start = _end = Offset.infinite;
           }
         }
-        final Offset newOffset = extendSelectionEvent.forward
-            ? Offset.infinite
-            : Offset.zero;
+        final Offset newOffset =
+            extendSelectionEvent.forward ? Offset.infinite : Offset.zero;
         if (extendSelectionEvent.isEnd) {
           if (newOffset == _end) {
             result = extendSelectionEvent.forward
@@ -231,10 +229,8 @@ class _RenderInlineMathSelectable extends RenderProxyBox
         }
       case SelectionEventType.directionallyExtendSelection:
         result = SelectionResult.end;
-        final extendSelectionEvent =
-            event as DirectionallyExtendSelectionEvent;
-        final double horizontalBaseLine =
-            globalToLocal(Offset(event.dx, 0)).dx;
+        final extendSelectionEvent = event as DirectionallyExtendSelectionEvent;
+        final double horizontalBaseLine = globalToLocal(Offset(event.dx, 0)).dx;
         late final Offset newOffset;
         late final bool forward;
         switch (extendSelectionEvent.direction) {
@@ -283,9 +279,7 @@ class _RenderInlineMathSelectable extends RenderProxyBox
 
   @override
   SelectedContent? getSelectedContent() {
-    return value.hasSelection
-        ? SelectedContent(plainText: _literal)
-        : null;
+    return value.hasSelection ? SelectedContent(plainText: _literal) : null;
   }
 
   @override

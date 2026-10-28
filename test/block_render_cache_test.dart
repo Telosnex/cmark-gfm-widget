@@ -4,7 +4,6 @@ import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pixel_snap/material.dart' as ps;
 
-
 const _parserOptions = CmarkParserOptions(enableMath: true);
 
 const _reply = '# Streaming\n'

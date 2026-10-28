@@ -14,7 +14,8 @@ void main() {
     expect(heading.type, CmarkNodeType.heading);
 
     final theme = CmarkThemeData.fallback(const TextTheme());
-    final inlineContext = InlineRenderContext(theme: theme, textScaleFactor: 1.0);
+    final inlineContext =
+        InlineRenderContext(theme: theme, textScaleFactor: 1.0);
     final baseStyle = theme.headingTextStyle(heading.headingData.level);
 
     final spans = renderInlineChildren(heading, inlineContext, baseStyle);

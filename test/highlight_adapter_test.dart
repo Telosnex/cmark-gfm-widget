@@ -14,7 +14,8 @@ const _theme = <String, TextStyle>{
 
 const _base = TextStyle(fontFamily: 'monospace', fontSize: 14);
 
-HighlightedCodeLines _build(HighlightAdapter adapter, String code, String? language) {
+HighlightedCodeLines _build(
+    HighlightAdapter adapter, String code, String? language) {
   return adapter.buildLines(
     code: code,
     baseStyle: _base,
@@ -43,9 +44,7 @@ List<List<(String, TextStyle?)>> _flatten(HighlightedCodeLines highlighted) {
 }
 
 String _plainText(HighlightedCodeLines highlighted) {
-  return highlighted.lines
-      .map((line) => line.toPlainText())
-      .join('\n');
+  return highlighted.lines.map((line) => line.toPlainText()).join('\n');
 }
 
 /// Streams [code] into [adapter] in chunks of [chunkSize], returning the
@@ -124,8 +123,10 @@ function f() { return /re.?gex/; }''';
     test('completed line spans are identical instances across appends', () {
       final adapter = HighlightAdapter();
       final first = _build(adapter, 'void main() {\n  print("hi");', 'dart');
-      final second = _build(adapter, 'void main() {\n  print("hi");\n}', 'dart');
-      final third = _build(adapter, 'void main() {\n  print("hi");\n}\n// done', 'dart');
+      final second =
+          _build(adapter, 'void main() {\n  print("hi");\n}', 'dart');
+      final third =
+          _build(adapter, 'void main() {\n  print("hi");\n}\n// done', 'dart');
 
       // Line 0 completed in the first build and must stay the same instance.
       expect(identical(first.lines[0], second.lines[0]), isTrue);
@@ -140,7 +141,8 @@ function f() { return /re.?gex/; }''';
       final adapter = HighlightAdapter();
       // Stream so the comment opener and closer arrive in separate builds.
       _build(adapter, '/* comment\n', 'dart');
-      final result = _build(adapter, '/* comment\nstill comment\n*/ final x = 1;', 'dart');
+      final result =
+          _build(adapter, '/* comment\nstill comment\n*/ final x = 1;', 'dart');
 
       // The second line is inside the block comment and must be styled as one.
       final secondLineRuns = _flatten(result)[1];

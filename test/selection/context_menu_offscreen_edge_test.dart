@@ -1,5 +1,6 @@
 import 'package:cmark_gfm_widget/cmark_gfm_widget.dart';
 import 'package:cmark_gfm_widget/src/flutter/selectable_region.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart'
     hide SelectableRegion, SelectableRegionState, SelectionArea;
@@ -78,5 +79,10 @@ void main() {
     await tester.pump();
     expect(tester.takeException(), isNull);
     expect(region.selectionOverlay?.toolbarIsVisible, isNot(isTrue));
-  });
+  },
+      // On the web, Flutter's menu shows only when the browser's is disabled
+      // (the app does that). Widget tests can't: the web engine drops every
+      // platform message in tests (TestEnvironment.ignorePlatformMessages in
+      // platform_dispatcher.dart), so disableContextMenu() never completes.
+      skip: kIsWeb);
 }

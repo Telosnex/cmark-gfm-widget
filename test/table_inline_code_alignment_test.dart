@@ -1,3 +1,7 @@
+// Loads fonts from files (dart:io): the VM only.
+@TestOn('vm')
+library;
+
 import 'dart:io';
 
 import 'package:cmark_gfm_widget/cmark_gfm_widget.dart';

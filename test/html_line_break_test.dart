@@ -1,7 +1,7 @@
 import 'package:cmark_gfm_widget/cmark_gfm_widget.dart';
 import 'package:cmark_gfm_widget/src/html_inline.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:pixel_snap/material.dart' as ps;
+import 'package:pixel_snap_fork/material.dart' as ps;
 
 const _toolUsageTable = '''
 | Most-used tools |

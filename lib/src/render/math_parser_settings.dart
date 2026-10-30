@@ -1,4 +1,4 @@
-import 'package:flutter_math_fork/flutter_math.dart';
+import 'package:flutter_math_fork_fork/flutter_math.dart';
 
 final _unicodeCodePattern = RegExp(r'\((\d+)\)');
 

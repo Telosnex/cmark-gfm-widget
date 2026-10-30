@@ -1,6 +1,6 @@
 import 'package:cmark_gfm_widget/cmark_gfm_widget.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:pixel_snap/material.dart';
+import 'package:pixel_snap_fork/material.dart';
 
 void main() {
   testWidgets('wide inline math does not overflow a narrow viewport',

@@ -65,13 +65,13 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.1.2"
-  cmark_gfm:
+  cmark_gfm_dart:
     dependency: "direct main"
     description:
       path: "."
       ref: HEAD
-      resolved-ref: f45c915fc31eac7df689c881bc775c76befbaa20
-      url: "https://github.com/Telosnex/cmark-gfm-dart.git"
+      resolved-ref: "1e375f3f605f20a0c342b2983ca316b50b5e3df3"
+      url: "https://github.com/Telosnex/cmark_gfm_dart.git"
     source: git
     version: "0.1.0-dev"
   collection:
@@ -148,12 +148,12 @@ packages:
     description: flutter
     source: sdk
     version: "0.0.0"
-  flutter_math_fork:
+  flutter_math_fork_fork:
     dependency: "direct main"
     description:
       path: "."
-      ref: master
-      resolved-ref: "297dbb9169ccfd82ce891a6e2415a46f2eeedc10"
+      ref: HEAD
+      resolved-ref: "6114da65909cd535f56cf9d7a33130dc5b90a863"
       url: "https://github.com/Telosnex/flutter_math_fork_fork.git"
     source: git
     version: "0.7.2"
@@ -186,13 +186,13 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.1.3"
-  highlight:
+  highlight_fork:
     dependency: "direct main"
     description:
       path: highlight
-      ref: "telosnex/limited-languages"
-      resolved-ref: fad3eda62fd074bbe4587d7e7e472ac3d8694ba1
-      url: "https://github.com/Telosnex/highlight.dart.git"
+      ref: HEAD
+      resolved-ref: "215639aef7dbc5f0b905ff24a52fad9dc6e8645e"
+      url: "https://github.com/Telosnex/highlight_fork.git"
     source: git
     version: "0.7.0"
   http:
@@ -315,14 +315,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.0.0"
-  nested:
-    dependency: transitive
-    description:
-      name: nested
-      sha256: "03bac4c528c64c95c722ec99280375a6f2fc708eec17c7b3f07253b626cd2a20"
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.0.0"
   node_preamble:
     dependency: transitive
     description:
@@ -363,13 +355,13 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "7.0.2"
-  pixel_snap:
+  pixel_snap_fork:
     dependency: "direct main"
     description:
       path: "."
       ref: HEAD
-      resolved-ref: "9fb9fccb81bce1b3140f30fa734b9ab1881f1220"
-      url: "https://github.com/Telosnex/pixel_snap"
+      resolved-ref: "6af53a6a10eb248208aaab54f2202b41710a5d58"
+      url: "https://github.com/Telosnex/pixel_snap_fork.git"
     source: git
     version: "0.1.5"
   pool:
@@ -380,14 +372,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.5.2"
-  provider:
-    dependency: transitive
-    description:
-      name: provider
-      sha256: "4e82183fa20e5ca25703ead7e05de9e4cceed1fbd1eadc1ac3cb6f565a09f272"
-      url: "https://pub.dev"
-    source: hosted
-    version: "6.1.5+1"
   pub_semver:
     dependency: transitive
     description:
@@ -513,14 +497,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.6.18"
-  tuple:
-    dependency: transitive
-    description:
-      name: tuple
-      sha256: a97ce2013f240b2f3807bcbaf218765b6f301c3eff91092bcfa23a039e7dd151
-      url: "https://pub.dev"
-    source: hosted
-    version: "2.0.2"
   typed_data:
     dependency: transitive
     description:

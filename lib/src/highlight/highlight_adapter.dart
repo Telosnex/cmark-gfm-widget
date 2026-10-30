@@ -1,7 +1,7 @@
 import 'dart:collection';
 
-import 'package:highlight/highlight.dart' as hi;
-import 'package:pixel_snap/material.dart';
+import 'package:highlight_fork/highlight.dart' as hi;
+import 'package:pixel_snap_fork/material.dart';
 
 /// Highlighted code, as one [TextSpan] per display line.
 ///

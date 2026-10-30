@@ -1,10 +1,10 @@
-import 'package:cmark_gfm/cmark_gfm.dart';
+import 'package:cmark_gfm_dart/cmark_gfm_dart.dart';
 import 'package:cmark_gfm_widget/src/widgets/source_markdown_registry.dart';
 
 import '../parser/document_snapshot.dart';
 import 'package:flutter/gestures.dart' show GestureRecognizer;
-import 'package:flutter_math_fork/flutter_math.dart';
-import 'package:pixel_snap/material.dart';
+import 'package:flutter_math_fork_fork/flutter_math.dart';
+import 'package:pixel_snap_fork/material.dart';
 
 import '../theme/cmark_theme.dart';
 import '../highlight/highlight_adapter.dart';

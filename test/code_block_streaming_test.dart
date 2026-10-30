@@ -1,7 +1,7 @@
 import 'package:cmark_gfm_widget/cmark_gfm_widget.dart';
 import 'package:material_ui/material_ui.dart' hide SelectionArea;
 import 'package:flutter_test/flutter_test.dart';
-import 'package:pixel_snap/material.dart' as ps;
+import 'package:pixel_snap_fork/material.dart' as ps;
 
 void main() {
   Widget wrap(String markdown) {

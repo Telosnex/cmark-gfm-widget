@@ -1,8 +1,8 @@
-import 'package:cmark_gfm/cmark_gfm.dart';
+import 'package:cmark_gfm_dart/cmark_gfm_dart.dart';
 import 'package:cmark_gfm_widget/cmark_gfm_widget.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:pixel_snap/material.dart' as ps;
+import 'package:pixel_snap_fork/material.dart' as ps;
 
 const _parserOptions = CmarkParserOptions(enableMath: true);
 

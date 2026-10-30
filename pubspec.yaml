@@ -1,8 +1,8 @@
 name: cmark_gfm_widget
 version: 0.1.0
-publish_to: 'none'
+repository: https://github.com/Telosnex/cmark_gfm_widget
+issue_tracker: https://github.com/Telosnex/cmark_gfm_widget/issues
 description: A lightweight Flutter renderer for GitHub Flavored Markdown powered by cmark_gfm_dart.
-homepage: https://example.com
 
 environment:
   sdk: '>=3.3.0 <4.0.0'
@@ -11,26 +11,13 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  cmark_gfm_dart:
-    git:
-      url: https://github.com/Telosnex/cmark_gfm_dart.git
-  # NOTE: do not add flutter_highlight here. Its pubspec depends on highlight
-  # via `path: ../highlight`, which pub rewrites into a commit-hash-pinned git
-  # dep that conflicts with any branch-ref dep on highlight ("version solving
-  # failed" naming two refs of the same repo). The one theme we used from it
-  # is vendored in lib/src/theme/a11y_dark_theme.dart.
-  highlight_fork:
-    git:
-      url: https://github.com/Telosnex/highlight_fork.git
-      path: highlight
-  # The fork re-exports the standalone Material/Cupertino packages.
-  pixel_snap_fork:
-    git:
-      url: https://github.com/Telosnex/pixel_snap_fork.git
-  # Forked because the original package was abandoned some years ago.
-  flutter_math_fork_fork:
-    git:
-      url: https://github.com/Telosnex/flutter_math_fork_fork.git
+  cmark_gfm_dart: ^0.1.0
+  # NOTE: do not add flutter_highlight here: it depends on highlight by
+  # path. The one theme we used from it is vendored in
+  # lib/src/theme/a11y_dark_theme.dart.
+  highlight_fork: ^0.7.1
+  pixel_snap_fork: ^0.1.5
+  flutter_math_fork_fork: ^0.7.3
   vector_math: ^2.2.0
 
   cupertino_ui: ^1.1.1

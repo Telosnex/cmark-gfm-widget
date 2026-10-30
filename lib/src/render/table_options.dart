@@ -1,4 +1,4 @@
-import 'package:cmark_gfm/cmark_gfm.dart';
+import 'package:cmark_gfm_dart/cmark_gfm_dart.dart';
 import 'package:flutter/widgets.dart';
 
 import '../theme/cmark_theme.dart';

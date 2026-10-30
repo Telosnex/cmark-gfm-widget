@@ -1,8 +1,8 @@
-import 'package:cmark_gfm/cmark_gfm.dart';
+import 'package:cmark_gfm_dart/cmark_gfm_dart.dart';
 import 'package:cmark_gfm_widget/cmark_gfm_widget.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter_math_fork/flutter_math.dart';
-import 'package:pixel_snap/material.dart';
+import 'package:flutter_math_fork_fork/flutter_math.dart';
+import 'package:pixel_snap_fork/material.dart';
 
 void main() {
   testWidgets('inline math falls back to text on unknown Unicode symbols',

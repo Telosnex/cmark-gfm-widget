@@ -1,8 +1,8 @@
 import 'package:cmark_gfm_widget/cmark_gfm_widget.dart';
-import 'package:cmark_gfm/cmark_gfm.dart';
+import 'package:cmark_gfm_dart/cmark_gfm_dart.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:pixel_snap/material.dart';
+import 'package:pixel_snap_fork/material.dart';
 
 /// Real-world LLM output: 3 header cells, but the delimiter row has 4
 /// columns. Strict GFM rejects this as a table; cmark_gfm's

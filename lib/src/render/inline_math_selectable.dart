@@ -1,5 +1,5 @@
 import 'package:flutter/rendering.dart';
-import 'package:pixel_snap/material.dart';
+import 'package:pixel_snap_fork/material.dart';
 
 class InlineMathSelectable extends StatelessWidget {
   const InlineMathSelectable({

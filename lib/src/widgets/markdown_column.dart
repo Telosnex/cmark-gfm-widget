@@ -1,4 +1,4 @@
-import 'package:cmark_gfm/cmark_gfm.dart';
+import 'package:cmark_gfm_dart/cmark_gfm_dart.dart';
 import 'package:material_ui/material_ui.dart' hide SelectionArea;
 import 'package:flutter/rendering.dart' show SelectedContent;
 

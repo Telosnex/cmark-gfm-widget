@@ -1,4 +1,4 @@
-import 'package:cmark_gfm/cmark_gfm.dart';
+import 'package:cmark_gfm_dart/cmark_gfm_dart.dart';
 import 'package:flutter/rendering.dart';
 
 import '../flutter/debug_log.dart';

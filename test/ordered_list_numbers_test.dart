@@ -1,4 +1,4 @@
-import 'package:cmark_gfm/cmark_gfm.dart';
+import 'package:cmark_gfm_dart/cmark_gfm_dart.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

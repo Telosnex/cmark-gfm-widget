@@ -1,4 +1,4 @@
-import 'package:cmark_gfm/cmark_gfm.dart';
+import 'package:cmark_gfm_dart/cmark_gfm_dart.dart';
 import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/widgets.dart';
 

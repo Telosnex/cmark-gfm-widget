@@ -6,7 +6,7 @@ import 'package:flutter/rendering.dart' show SelectedContent;
 import 'package:flutter_test/flutter_test.dart';
 // The package renders text using pixel_snap's vendored Text/RichText, not
 // Flutter's core widgets - match against those types, not `package:flutter`'s.
-import 'package:pixel_snap/material.dart' as ps;
+import 'package:pixel_snap_fork/material.dart' as ps;
 
 /// These tests exist because the recognizer-based link rendering
 /// (`inline_renderers.dart`, `CmarkNodeType.link`) replaced an earlier

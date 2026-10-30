@@ -1,7 +1,7 @@
 name: cmark_gfm_widget
 version: 0.1.0
 publish_to: 'none'
-description: A lightweight Flutter renderer for GitHub Flavored Markdown powered by cmark-gfm-dart.
+description: A lightweight Flutter renderer for GitHub Flavored Markdown powered by cmark_gfm_dart.
 homepage: https://example.com
 
 environment:
@@ -11,28 +11,26 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  cmark_gfm:
+  cmark_gfm_dart:
     git:
-      url: https://github.com/Telosnex/cmark-gfm-dart.git
+      url: https://github.com/Telosnex/cmark_gfm_dart.git
   # NOTE: do not add flutter_highlight here. Its pubspec depends on highlight
   # via `path: ../highlight`, which pub rewrites into a commit-hash-pinned git
   # dep that conflicts with any branch-ref dep on highlight ("version solving
   # failed" naming two refs of the same repo). The one theme we used from it
   # is vendored in lib/src/theme/a11y_dark_theme.dart.
-  highlight:
+  highlight_fork:
     git:
-      url: https://github.com/Telosnex/highlight.dart.git
+      url: https://github.com/Telosnex/highlight_fork.git
       path: highlight
-      ref: telosnex/limited-languages
   # The fork re-exports the standalone Material/Cupertino packages.
-  pixel_snap:
+  pixel_snap_fork:
     git:
-      url: https://github.com/Telosnex/pixel_snap
+      url: https://github.com/Telosnex/pixel_snap_fork.git
   # Forked because the original package was abandoned some years ago.
-  flutter_math_fork:
+  flutter_math_fork_fork:
     git:
       url: https://github.com/Telosnex/flutter_math_fork_fork.git
-      ref: master
   vector_math: ^2.2.0
 
   cupertino_ui: ^1.1.1

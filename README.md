@@ -1,7 +1,7 @@
 # cmark_gfm_widget
 
 A lightweight Flutter Markdown renderer built on top of
-[`cmark_gfm`](../cmark-gfm-dart). It parses GitHub Flavored Markdown using the
+[`cmark_gfm_dart`](https://github.com/Telosnex/cmark_gfm_dart). It parses GitHub Flavored Markdown using the
 streaming CommonMark parser and renders content as a `Column` of Flutter
 widgets composed from `InlineSpan`s.
 

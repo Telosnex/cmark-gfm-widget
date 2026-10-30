@@ -1,6 +1,6 @@
 import 'dart:collection';
 
-import 'package:cmark_gfm/cmark_gfm.dart';
+import 'package:cmark_gfm_dart/cmark_gfm_dart.dart';
 
 /// Internal metadata stored on [CmarkNode.userData].
 class NodeMetadata {

@@ -11,9 +11,9 @@ dependencies:
     sdk: flutter
   cmark_gfm_widget:
     path: ..
-  pixel_snap:
+  pixel_snap_fork:
     git:
-      url: https://github.com/Telosnex/pixel_snap
+      url: https://github.com/Telosnex/pixel_snap_fork.git
 
 dev_dependencies:
   flutter_test:

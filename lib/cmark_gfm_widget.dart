@@ -7,6 +7,7 @@ export 'src/render/inline_math_selectable.dart';
 export 'src/render/inline_renderers.dart';
 export 'src/render/render_pipeline.dart';
 export 'src/theme/cmark_theme.dart';
+export 'src/widgets/block_column.dart';
 export 'src/widgets/markdown_column.dart';
 export 'src/widgets/selection_delegate.dart';
 export 'src/widgets/selection_scope.dart';

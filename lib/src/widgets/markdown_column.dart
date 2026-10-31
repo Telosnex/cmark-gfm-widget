@@ -8,6 +8,7 @@ import '../parser/document_snapshot.dart';
 import '../parser/parser_controller.dart';
 import '../theme/cmark_theme.dart';
 import '../render/render_pipeline.dart';
+import 'block_column.dart';
 
 /// Renders Markdown as a [Column] of widgets.
 class CmarkMarkdownColumn extends StatefulWidget {
@@ -168,10 +169,7 @@ class _CmarkMarkdownColumnState extends State<CmarkMarkdownColumn> {
       cache: _renderCache,
     );
 
-    final column = Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: children,
-    );
+    final column = CmarkBlockColumn(theme: theme, children: children);
 
     // Use SelectionArea to enable cross-block selection
     final content = widget.selectable

@@ -1,5 +1,5 @@
 name: cmark_gfm_widget
-version: 0.1.0
+version: 0.2.0
 repository: https://github.com/Telosnex/cmark_gfm_widget
 issue_tracker: https://github.com/Telosnex/cmark_gfm_widget/issues
 description: A lightweight Flutter renderer for GitHub Flavored Markdown powered by cmark_gfm_dart.

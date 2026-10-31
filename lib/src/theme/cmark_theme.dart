@@ -73,7 +73,7 @@ class CmarkThemeData {
     required this.orderedListIndent,
     required this.unorderedListIndent,
     required this.listItemSpacing,
-    this.listItemBlockSpacing = EdgeInsets.zero,
+    this.listItemBlockSpacing = 0,
     required this.orderedListBulletTextStyle,
     required this.unorderedListBulletTextStyle,
     required this.tableHeaderTextStyle,
@@ -113,7 +113,11 @@ class CmarkThemeData {
   final Color thematicBreakColor;
   final double thematicBreakThickness;
   final double thematicBreakVerticalPadding;
-  final EdgeInsets blockSpacing;
+  /// Vertical space between two sibling blocks, such as two paragraphs.
+  ///
+  /// The space goes only between blocks. A block that is alone, or last in
+  /// its document, quote or list item, has no space after it.
+  final double blockSpacing;
   final Color blockQuoteBackgroundColor;
   final Color blockQuoteBorderColor;
   final EdgeInsets blockQuotePadding;
@@ -131,8 +135,13 @@ class CmarkThemeData {
   ///
   /// The provided [level] is 1-based, where the outermost list has level 1.
   final double Function(int level) unorderedListIndent;
+  /// Vertical space between two items of a loose list. A tight list has
+  /// no space between its items.
   final double listItemSpacing;
-  final EdgeInsets listItemBlockSpacing;
+
+  /// Vertical space between two sibling blocks inside a list item. It
+  /// replaces [blockSpacing] in lists.
+  final double listItemBlockSpacing;
   final TextStyle orderedListBulletTextStyle;
   final TextStyle unorderedListBulletTextStyle;
   final TextStyle tableHeaderTextStyle;
@@ -160,7 +169,7 @@ class CmarkThemeData {
     Color? thematicBreakColor,
     double? thematicBreakThickness,
     double? thematicBreakVerticalPadding,
-    EdgeInsets? blockSpacing,
+    double? blockSpacing,
     Color? blockQuoteBackgroundColor,
     Color? blockQuoteBorderColor,
     EdgeInsets? blockQuotePadding,
@@ -171,7 +180,7 @@ class CmarkThemeData {
     double Function(int level)? orderedListIndent,
     double Function(int level)? unorderedListIndent,
     double? listItemSpacing,
-    EdgeInsets? listItemBlockSpacing,
+    double? listItemBlockSpacing,
     TextStyle? orderedListBulletTextStyle,
     TextStyle? unorderedListBulletTextStyle,
     TextStyle? tableHeaderTextStyle,
@@ -263,7 +272,7 @@ class CmarkThemeData {
       thematicBreakColor: Colors.grey.shade400,
       thematicBreakThickness: 1.0,
       thematicBreakVerticalPadding: 8.0,
-      blockSpacing: const EdgeInsets.only(bottom: 0),
+      blockSpacing: 0,
       blockQuoteBackgroundColor: Colors.grey.shade100,
       blockQuoteBorderColor: Colors.grey.shade400,
       blockQuotePadding: const EdgeInsets.symmetric(

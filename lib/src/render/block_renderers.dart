@@ -115,21 +115,15 @@ Widget? _renderBlockContent(
   BlockRenderContext context, {
   int listLevel = 0,
 }) {
-  // Use listItemBlockSpacing when inside a list to avoid excessive padding
-  final effectiveBlockSpacing = listLevel > 0
-      ? context.theme.listItemBlockSpacing
-      : context.theme.blockSpacing;
   final theme = context.theme;
   switch (node.type) {
     case CmarkNodeType.paragraph:
-      return _buildTextualBlock(node, context,
-          style: theme.paragraphTextStyle, blockSpacing: effectiveBlockSpacing);
+      return _buildTextualBlock(node, context, style: theme.paragraphTextStyle);
     case CmarkNodeType.heading:
       return _buildTextualBlock(
         node,
         context,
         style: theme.headingTextStyle(node.headingData.level),
-        blockSpacing: effectiveBlockSpacing,
       );
     case CmarkNodeType.blockQuote:
       return _buildBlockQuote(node, context, listLevel: listLevel);
@@ -144,14 +138,10 @@ Widget? _renderBlockContent(
         thickness: theme.thematicBreakThickness,
         height: theme.thematicBreakThickness,
       );
-      final paddedDivider = Padding(
-        padding: EdgeInsets.only(
-          top: verticalPadding,
-          bottom: verticalPadding,
-        ),
+      return Padding(
+        padding: EdgeInsets.symmetric(vertical: verticalPadding),
         child: divider,
       );
-      return _wrapWithSpacing(paddedDivider, theme.blockSpacing);
     case CmarkNodeType.list:
       return _buildList(node, context, level: listLevel + 1);
     case CmarkNodeType.table:
@@ -162,7 +152,6 @@ Widget? _renderBlockContent(
         context,
         style: theme.paragraphTextStyle,
         literal: node.content.toString(),
-        blockSpacing: effectiveBlockSpacing,
       );
     case CmarkNodeType.footnoteDefinition:
       return _buildFootnoteDefinition(node, context, listLevel: listLevel);
@@ -174,7 +163,6 @@ Widget? _renderBlockContent(
         context,
         style: theme.paragraphTextStyle,
         literal: node.customData.onEnter,
-        blockSpacing: effectiveBlockSpacing,
       );
     default:
       return _renderCompositeBlock(node, context, listLevel: listLevel);
@@ -198,10 +186,7 @@ Widget? _renderCompositeBlock(
   if (children.isEmpty) {
     return null;
   }
-  return _wrapWithSpacing(
-    Column(crossAxisAlignment: CrossAxisAlignment.start, children: children),
-    context.theme.blockSpacing,
-  );
+  return _blockColumn(children, _childBlockSpacing(context, listLevel));
 }
 
 Widget _buildTextualBlock(
@@ -209,9 +194,7 @@ Widget _buildTextualBlock(
   BlockRenderContext context, {
   required TextStyle style,
   String? literal,
-  EdgeInsets? blockSpacing,
 }) {
-  final effectiveSpacing = blockSpacing ?? context.theme.blockSpacing;
   // Fresh per-call sink for any link tap recognizers created while rendering
   // this block's inline content; ownership is handed to GestureRecognizerOwner
   // below so they get disposed at the right time (see
@@ -256,7 +239,7 @@ Widget _buildTextualBlock(
     );
   }
 
-  return _wrapWithSpacing(widget, effectiveSpacing);
+  return widget;
 }
 
 Widget _buildBlockQuote(
@@ -282,11 +265,7 @@ Widget _buildBlockQuote(
       ),
     ),
     padding: context.theme.blockQuotePadding,
-    margin: context.theme.blockSpacing,
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: children,
-    ),
+    child: _blockColumn(children, _childBlockSpacing(context, listLevel)),
   );
 }
 
@@ -355,7 +334,6 @@ Widget _buildCodeBlock(CmarkNode node, BlockRenderContext context) {
   Widget result = RepaintBoundary(
     child: Container(
       padding: context.theme.codeBlockPadding,
-      margin: context.theme.blockSpacing,
       color: context.theme.codeBlockBackgroundColor,
       child: child,
     ),
@@ -377,8 +355,7 @@ Widget _buildCodeBlock(CmarkNode node, BlockRenderContext context) {
 
 Widget _buildMathBlock(CmarkNode node, BlockRenderContext context) {
   final builder = context.mathBlockBuilder ?? _defaultMathBlockBuilder;
-  final widget = builder(node, context);
-  return _wrapWithSpacing(widget, context.theme.blockSpacing);
+  return builder(node, context);
 }
 
 Widget _buildList(
@@ -408,7 +385,6 @@ Widget _buildList(
         itemContentContext,
         ordered: ordered,
         index: itemNumber == 0 ? index : itemNumber,
-        tight: data.tight,
         level: level,
         leadingSpansBeforeMarker: itemLeadingSpans,
       ),
@@ -416,10 +392,7 @@ Widget _buildList(
 
     item = item.next;
   }
-  return _wrapWithSpacing(
-    Column(crossAxisAlignment: CrossAxisAlignment.start, children: bullets),
-    context.theme.blockSpacing,
-  );
+  return _blockColumn(bullets, data.tight ? 0 : context.theme.listItemSpacing);
 }
 
 Widget _buildListItem(
@@ -427,7 +400,6 @@ Widget _buildListItem(
   BlockRenderContext context, {
   required bool ordered,
   required int index,
-  required bool tight,
   required int level,
   required List<InlineSpan> leadingSpansBeforeMarker,
 }) {
@@ -441,10 +413,7 @@ Widget _buildListItem(
     }
     child = child.next;
   }
-  final column = Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: children,
-  );
+  final column = _blockColumn(children, context.theme.listItemBlockSpacing);
 
   final resolvedLevel = level < 1 ? 1 : level;
 
@@ -489,7 +458,6 @@ Widget _buildListItem(
       left: ordered
           ? context.theme.orderedListIndent(resolvedLevel)
           : context.theme.unorderedListIndent(resolvedLevel),
-      bottom: tight ? 0 : context.theme.listItemSpacing,
     ),
     child: Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -704,14 +672,16 @@ Widget _buildTable(CmarkNode node, BlockRenderContext context) {
     );
     result = wrapper(result, metadata, wrapperContext);
   }
-  return _wrapWithSpacing(result, context.theme.blockSpacing);
+  return result;
 }
 
-Widget _buildFootnoteDefinition(
+Widget? _buildFootnoteDefinition(
   CmarkNode node,
   BlockRenderContext context, {
   required int listLevel,
 }) {
+  // No widget, not an empty one: an empty block would still get spacing.
+  if (!context.renderFootnoteDefinitions) return null;
   final label = node.footnoteReferenceIndex;
   final children = <Widget>[];
   var child = node.firstChild;
@@ -722,25 +692,15 @@ Widget _buildFootnoteDefinition(
     }
     child = child.next;
   }
-  if (!context.renderFootnoteDefinitions) {
-    return const SizedBox.shrink();
-  }
-
-  return _wrapWithSpacing(
-    Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('[$label]', style: context.theme.footnoteLabelTextStyle),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: children,
-          ),
-        ),
-      ],
-    ),
-    context.theme.blockSpacing,
+  return Row(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text('[$label]', style: context.theme.footnoteLabelTextStyle),
+      const SizedBox(width: 8),
+      Expanded(
+        child: _blockColumn(children, _childBlockSpacing(context, listLevel)),
+      ),
+    ],
   );
 }
 
@@ -768,11 +728,22 @@ TextAlign _textAlignForCell(CmarkTableAlign align) {
   }
 }
 
-Widget _wrapWithSpacing(Widget child, EdgeInsets padding) {
-  if (padding == EdgeInsets.zero) {
-    return child;
-  }
-  return Padding(padding: padding, child: child);
+/// Lays out sibling blocks with [spacing] between them and none after the
+/// last one.
+Widget _blockColumn(List<Widget> children, double spacing) {
+  return Column(
+    mainAxisSize: MainAxisSize.min,
+    crossAxisAlignment: CrossAxisAlignment.start,
+    spacing: spacing,
+    children: children,
+  );
+}
+
+/// Space between the child blocks of a container at [listLevel].
+double _childBlockSpacing(BlockRenderContext context, int listLevel) {
+  return listLevel > 0
+      ? context.theme.listItemBlockSpacing
+      : context.theme.blockSpacing;
 }
 
 Widget _defaultMathBlockBuilder(
